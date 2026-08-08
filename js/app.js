@@ -518,7 +518,11 @@ const App = {
       }, { force: true, resetCache: true });
       btn.disabled = false;
       btn.innerHTML = origText;
-      alert(`✅ Sinkronisasi Google Sheets Selesai!\n${res.success} dari ${res.total} transaksi berhasil disinkronkan.`);
+      if (res.total === 0) {
+        alert("⚠️ Tidak ada data transaksi di penyimpanan aplikasi ini (0 transaksi).\n\nJika data transaksi Anda tersimpan di Supabase Cloud, silakan klik 'Pull Data dari Supabase' terlebih dahulu, atau pastikan Anda membuka tab/domain yang menyimpan data transaksi.");
+      } else {
+        alert(`✅ Sinkronisasi Google Sheets Selesai!\n${res.success} dari ${res.total} transaksi berhasil disinkronkan.`);
+      }
     });
 
     document.getElementById('btn-save-gsheet-url')?.addEventListener('click', () => {
@@ -542,7 +546,11 @@ const App = {
       }, { force: true, resetCache: true });
       btn.disabled = false;
       btn.innerHTML = origText;
-      alert(`✅ Sync ke Google Sheet Baru Selesai!\n${res.success} dari ${res.total} transaksi berhasil terkirim ke Google Sheets.`);
+      if (res.total === 0) {
+        alert("⚠️ Tidak ada data transaksi di penyimpanan aplikasi ini (0 transaksi).\n\nJika data transaksi Anda tersimpan di Supabase Cloud, silakan klik 'Pull Data dari Supabase' terlebih dahulu, atau pastikan Anda membuka tab/domain yang menyimpan data transaksi.");
+      } else {
+        alert(`✅ Sync ke Google Sheet Baru Selesai!\n${res.success} dari ${res.total} transaksi berhasil terkirim ke Google Sheets.`);
+      }
     });
 
     // Modal Guide Listeners
