@@ -1172,25 +1172,69 @@ const DB = {
 
       if (payloadRows.length === 0) return true;
 
-      const payloadObj = {
-        action: 'upsert',
-        tx_id: tx.id || '',
-        rows: payloadRows
-      };
-      const jsonStr = JSON.stringify(payloadObj);
-      const postUrl = webhookUrl + (webhookUrl.includes('?') ? '&' : '?') + 'payload=' + encodeURIComponent(jsonStr);
 
-      await fetch(postUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8'
-        },
-        body: jsonStr
-      });
+
+      // Google Apps Script /exec ALWAYS does a 302 redirect to googleusercontent.com.
+      // Per HTTP spec, 302 redirect converts POST → GET and DROPS the request body.
+      // Therefore POST body NEVER reaches Apps Script. The ONLY reliable method is
+      // to send data via URL query parameters. Apps Script reads via e.parameter.payload.
+      // For payloads exceeding URL limits, we send rows individually.
+      let syncSuccess = false;
       
-      this.markGSheetsItemSynced(signaturesToMark);
-      return true;
+      const sendPayload = async (payloadData) => {
+        const jsonStr = JSON.stringify(payloadData);
+        const getUrl = webhookUrl + (webhookUrl.includes('?') ? '&' : '?') + 'payload=' + encodeURIComponent(jsonStr);
+        
+        // If URL is too long (>7500 chars), return false to trigger per-row sending
+        if (getUrl.length > 7500) return null; // null = too large, needs splitting
+        
+        const resp = await fetch(getUrl, { redirect: 'follow' });
+        if (resp.ok) {
+          const result = await resp.json().catch(() => null);
+          return !!(result && result.status === 'success');
+        }
+        console.warn('Google Sheets sync HTTP error:', resp.status);
+        return false;
+      };
+      
+      try {
+        // Try sending all rows in one request first
+        const fullPayload = {
+          action: 'upsert',
+          tx_id: tx.id || '',
+          rows: payloadRows
+        };
+        const result = await sendPayload(fullPayload);
+        
+        if (result === null) {
+          // Payload too large for URL, send rows one by one
+          let allOk = true;
+          for (const row of payloadRows) {
+            const singlePayload = {
+              action: 'upsert',
+              tx_id: tx.id || '',
+              rows: [row]
+            };
+            const singleResult = await sendPayload(singlePayload);
+            if (!singleResult) {
+              allOk = false;
+              console.warn('Google Sheets: failed to sync row', row.item_no, 'for tx', tx.id);
+            }
+            await new Promise(r => setTimeout(r, 300)); // Rate limit between rows
+          }
+          syncSuccess = allOk;
+        } else {
+          syncSuccess = result;
+        }
+      } catch (fetchErr) {
+        console.warn('Google Sheets fetch error:', fetchErr.message);
+        syncSuccess = false;
+      }
+      
+      if (syncSuccess) {
+        this.markGSheetsItemSynced(signaturesToMark);
+      }
+      return syncSuccess;
     } catch (e) {
       console.warn("Google Sheets Sync Note:", e);
       return false;

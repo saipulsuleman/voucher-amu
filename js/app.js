@@ -520,8 +520,12 @@ const App = {
       btn.innerHTML = origText;
       if (res.total === 0) {
         alert("⚠️ Tidak ada data transaksi di penyimpanan aplikasi ini (0 transaksi).\n\nJika data transaksi Anda tersimpan di Supabase Cloud, silakan klik 'Pull Data dari Supabase' terlebih dahulu, atau pastikan Anda membuka tab/domain yang menyimpan data transaksi.");
-      } else {
+      } else if (res.success === res.total) {
         alert(`✅ Sinkronisasi Google Sheets Selesai!\n${res.success} dari ${res.total} transaksi berhasil disinkronkan.`);
+      } else if (res.success > 0) {
+        alert(`⚠️ Sync Sebagian Berhasil!\n${res.success} dari ${res.total} transaksi berhasil.\n${res.total - res.success} transaksi gagal. Silakan coba lagi.`);
+      } else {
+        alert(`❌ Sync Gagal!\nTidak ada transaksi yang berhasil (0 dari ${res.total}).\n\nPastikan Code.gs di Apps Script benar dan Web App di-deploy ulang.`);
       }
     });
 
@@ -547,19 +551,25 @@ const App = {
       btn.disabled = true;
       btn.innerHTML = '⏳ Mengetes Koneksi...';
       try {
-        await fetch(url, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'ping' })
-        });
+        const pingPayload = encodeURIComponent(JSON.stringify({ action: 'ping' }));
+        const testUrl = url + (url.includes('?') ? '&' : '?') + 'payload=' + pingPayload;
+        const resp = await fetch(testUrl, { redirect: 'follow' });
         btn.disabled = false;
         btn.innerHTML = origText;
-        alert("✅ Tes Koneksi Terhubung!\n\nURL Web App terhubung dan siap menerima data. Silakan klik '🚀 Sync Semua Data ke Google Sheet Baru'!");
+        if (resp.ok) {
+          const result = await resp.json().catch(() => null);
+          if (result && result.status) {
+            alert("✅ Tes Koneksi Terhubung!\n\nURL Web App terhubung dan siap menerima data. Silakan klik '🚀 Sync Semua Data ke Google Sheet Baru'!");
+          } else {
+            alert("⚠️ Koneksi berhasil tapi respons tidak valid. Pastikan Anda sudah paste Code.gs dengan benar dan deploy ulang Web App.");
+          }
+        } else {
+          alert("❌ Tes Koneksi Gagal!\n\nHTTP Error: " + resp.status + ". Pastikan URL diawali dengan https://script.google.com/macros/s/.../exec dan akses diset ke 'Siapa saja (Anyone)'.");
+        }
       } catch(e) {
         btn.disabled = false;
         btn.innerHTML = origText;
-        alert("❌ Tes Koneksi Gagal!\n\nMohon pastikan URL diawali dengan https://script.google.com/macros/s/.../exec dan akses diset ke 'Siapa saja (Anyone)'.");
+        alert("❌ Tes Koneksi Gagal!\n\nMohon pastikan URL diawali dengan https://script.google.com/macros/s/.../exec dan akses diset ke 'Siapa saja (Anyone)'.\n\nDetail: " + e.message);
       }
     });
 
@@ -575,8 +585,12 @@ const App = {
       btn.innerHTML = origText;
       if (res.total === 0) {
         alert("⚠️ Tidak ada data transaksi di penyimpanan aplikasi ini (0 transaksi).\n\nJika data transaksi Anda tersimpan di Supabase Cloud, silakan klik 'Pull Data dari Supabase' terlebih dahulu, atau pastikan Anda membuka tab/domain yang menyimpan data transaksi.");
-      } else {
+      } else if (res.success === res.total) {
         alert(`✅ Sync ke Google Sheet Baru Selesai!\n${res.success} dari ${res.total} transaksi berhasil terkirim ke Google Sheets.`);
+      } else if (res.success > 0) {
+        alert(`⚠️ Sync Sebagian Berhasil!\n${res.success} dari ${res.total} transaksi berhasil terkirim.\n${res.total - res.success} transaksi gagal. Silakan coba lagi.`);
+      } else {
+        alert(`❌ Sync Gagal!\nTidak ada transaksi yang berhasil terkirim (0 dari ${res.total}).\n\nPastikan:\n1. Code.gs sudah di-paste dengan benar di Apps Script\n2. Web App di-deploy ulang sebagai 'Anyone'\n3. URL yang dimasukkan adalah URL deployment terbaru`);
       }
     });
 
