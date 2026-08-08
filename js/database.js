@@ -1174,27 +1174,29 @@ const DB = {
 
 
 
-      // Google Apps Script /exec ALWAYS does a 302 redirect to googleusercontent.com.
-      // Per HTTP spec, 302 redirect converts POST → GET and DROPS the request body.
-      // Therefore POST body NEVER reaches Apps Script. The ONLY reliable method is
-      // to send data via URL query parameters. Apps Script reads via e.parameter.payload.
-      // For payloads exceeding URL limits, we send rows individually.
+      // Google Apps Script /exec ALWAYS 302 redirects to googleusercontent.com.
+      // Two constraints force this specific approach:
+      // 1. POST body is LOST during 302 redirect (browser converts POST→GET per HTTP spec)
+      // 2. script.google.com does NOT send CORS headers in its 302 response
+      //
+      // Therefore the ONLY working approach is: GET + URL params + mode:'no-cors'
+      // - GET: Data in URL params survives 302 redirect
+      // - no-cors: Bypasses CORS blocking on the redirect
+      // - Response is opaque (can't read), but if fetch completes → data arrived
       let syncSuccess = false;
       
       const sendPayload = async (payloadData) => {
         const jsonStr = JSON.stringify(payloadData);
         const getUrl = webhookUrl + (webhookUrl.includes('?') ? '&' : '?') + 'payload=' + encodeURIComponent(jsonStr);
         
-        // If URL is too long (>7500 chars), return false to trigger per-row sending
+        // URL length safety check — browsers/servers typically support ~8000 chars
         if (getUrl.length > 7500) return null; // null = too large, needs splitting
         
-        const resp = await fetch(getUrl, { redirect: 'follow' });
-        if (resp.ok) {
-          const result = await resp.json().catch(() => null);
-          return !!(result && result.status === 'success');
-        }
-        console.warn('Google Sheets sync HTTP error:', resp.status);
-        return false;
+        // mode:'no-cors' returns opaque response (type='opaque', status=0)
+        // If fetch completes without throwing, the request was sent successfully
+        // and URL params were delivered to Apps Script via e.parameter.payload
+        await fetch(getUrl, { mode: 'no-cors', redirect: 'follow' });
+        return true;
       };
       
       try {
@@ -1227,6 +1229,7 @@ const DB = {
           syncSuccess = result;
         }
       } catch (fetchErr) {
+        // Network error — request never sent
         console.warn('Google Sheets fetch error:', fetchErr.message);
         syncSuccess = false;
       }

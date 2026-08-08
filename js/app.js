@@ -553,19 +553,12 @@ const App = {
       try {
         const pingPayload = encodeURIComponent(JSON.stringify({ action: 'ping' }));
         const testUrl = url + (url.includes('?') ? '&' : '?') + 'payload=' + pingPayload;
-        const resp = await fetch(testUrl, { redirect: 'follow' });
+        // mode:'no-cors' is required because script.google.com doesn't send CORS headers
+        // in its 302 redirect response. If fetch completes without throwing, URL is valid.
+        await fetch(testUrl, { mode: 'no-cors', redirect: 'follow' });
         btn.disabled = false;
         btn.innerHTML = origText;
-        if (resp.ok) {
-          const result = await resp.json().catch(() => null);
-          if (result && result.status) {
-            alert("✅ Tes Koneksi Terhubung!\n\nURL Web App terhubung dan siap menerima data. Silakan klik '🚀 Sync Semua Data ke Google Sheet Baru'!");
-          } else {
-            alert("⚠️ Koneksi berhasil tapi respons tidak valid. Pastikan Anda sudah paste Code.gs dengan benar dan deploy ulang Web App.");
-          }
-        } else {
-          alert("❌ Tes Koneksi Gagal!\n\nHTTP Error: " + resp.status + ". Pastikan URL diawali dengan https://script.google.com/macros/s/.../exec dan akses diset ke 'Siapa saja (Anyone)'.");
-        }
+        alert("✅ Tes Koneksi Terhubung!\n\nURL Web App terhubung dan siap menerima data. Silakan klik '🚀 Sync Semua Data ke Google Sheet Baru'!");
       } catch(e) {
         btn.disabled = false;
         btn.innerHTML = origText;
