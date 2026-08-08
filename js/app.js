@@ -7,6 +7,45 @@ document.addEventListener('DOMContentLoaded', () => {
   App.init();
 });
 
+// --- GLOBAL ERROR BOUNDARY ---
+(function initErrorBoundary() {
+  function showErrorModal(message, source, lineno, colno, error) {
+    // Hindari multiple modals
+    if (document.getElementById('global-error-boundary')) return;
+
+    const errorDetails = `Pesan: ${message}\nSumber: ${source || 'N/A'}\nBaris: ${lineno || 'N/A'}:${colno || 'N/A'}\nStack: ${error?.stack || 'N/A'}`;
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'global-error-boundary';
+    
+    overlay.innerHTML = `
+      <div class="error-boundary-card">
+        <h2>⚠️ Terjadi Kesalahan Aplikasi</h2>
+        <p style="margin: 0; color: #475569; font-size: 0.9rem;">
+          Aplikasi mengalami masalah teknis. Anda dapat memuat ulang aplikasi atau menyalin pesan error ini untuk dilaporkan.
+        </p>
+        <div class="error-boundary-msg" id="error-boundary-text"></div>
+        <div class="error-boundary-actions">
+          <button class="btn btn-secondary" onclick="navigator.clipboard.writeText(document.getElementById('error-boundary-text').innerText).then(()=>alert('Tersalin!'))">📋 Salin Error</button>
+          <button class="btn btn-primary" onclick="window.location.reload()">🔄 Muat Ulang</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(overlay);
+    document.getElementById('error-boundary-text').innerText = errorDetails;
+  }
+
+  window.onerror = function (msg, url, lineNo, columnNo, error) {
+    showErrorModal(msg, url, lineNo, columnNo, error);
+    return false;
+  };
+
+  window.addEventListener('unhandledrejection', function (event) {
+    showErrorModal(event.reason?.message || 'Promise Rejection', 'Promise', null, null, event.reason);
+  });
+})();
+
 window.escapeHTML = function(str) {
   if (str === null || str === undefined) return '';
   return String(str)
