@@ -632,6 +632,11 @@ const DB = {
     }
   },
 
+  clearSyncedSupabaseCache() {
+    this.init();
+    this.getStorage().removeItem('amu_supabase_synced');
+  },
+
   getSyncedSupabaseTxs() {
     this.init();
     try {
@@ -641,10 +646,10 @@ const DB = {
     }
   },
 
-  markSupabaseTxSynced(txId) {
+  markSupabaseTxSynced(sig) {
     const synced = this.getSyncedSupabaseTxs();
-    if (!synced.includes(txId)) {
-      synced.push(txId);
+    if (!synced.includes(sig)) {
+      synced.push(sig);
       this.getStorage().setItem('amu_supabase_synced', JSON.stringify(synced));
     }
   },
@@ -665,14 +670,22 @@ const DB = {
     }, 2000);
   },
 
-  async syncSupabaseTransaction(tx) {
+  async syncSupabaseTransaction(tx, options = {}) {
     const cfg = this.getSupabaseConfig();
     if (!cfg || !cfg.url || !cfg.key) {
       return { success: false, message: 'URL atau Anon Key Supabase belum terisi.' };
     }
 
+    const force = !!(options && options.force);
+    const pVoucher = tx.paymentVoucher || tx.payment_voucher || 'Tunai';
+    const pAdmin = tx.paymentAdmin || tx.payment_admin || 'Tunai';
+    const grandTotal = Number(tx.grandTotal) || 0;
+    const sig = `${tx.id}_${tx.updatedAt || ''}_${tx.status || 'SUKSES'}_${tx.customerName || ''}_${grandTotal}_${pVoucher}_${pAdmin}`;
+
     const synced = this.getSyncedSupabaseTxs();
-    if (synced.includes(tx.id)) return { success: true, skipped: true };
+    if (!force && synced.includes(sig)) {
+      return { success: true, skipped: true };
+    }
 
     try {
       const endpoint = `${cfg.url}/rest/v1/transactions`;
@@ -687,10 +700,10 @@ const DB = {
           voucher_subtotal: Number(tx.voucherSubtotal) || (tx.items ? tx.items.reduce((s, i) => s + (Number(i.itemSubtotal) || 0), 0) : 0),
           admin_fee: Number(tx.adminFee) || (tx.items ? tx.items.reduce((s, i) => s + (Number(i.adminSubtotal) || 0), 0) : 0),
           clearing_fee: Number(tx.clearingFee) || 0,
-          grand_total: Number(tx.grandTotal) || 0,
+          grand_total: grandTotal,
           terbilang: tx.terbilang || '',
-          payment_voucher: tx.paymentVoucher || 'Tunai',
-          payment_admin: tx.paymentAdmin || 'Tunai',
+          payment_voucher: pVoucher,
+          payment_admin: pAdmin,
           status: tx.status || 'SUKSES',
           void_reason: tx.voidReason || null,
           updated_at: tx.updatedAt || tx.createdAt || new Date().toISOString()
@@ -753,7 +766,7 @@ const DB = {
             return { success: false, message: `Gagal upload rincian kupon (HTTP ${resItems.status}): ${errItems}` };
           }
         }
-        this.markSupabaseTxSynced(tx.id);
+        this.markSupabaseTxSynced(sig);
         return { success: true };
       }
       return { success: false, message: 'Runtime environment does not support fetch.' };
@@ -761,6 +774,43 @@ const DB = {
       console.warn("Supabase Sync Note", e);
       return { success: false, message: e.message };
     }
+  },
+
+  async syncAllToSupabase(progressCallback, options = {}) {
+    const transactions = this.getTransactions();
+    if (!transactions || transactions.length === 0) return { total: 0, success: 0, skipped: 0 };
+
+    if (options && options.resetCache) {
+      this.clearSyncedSupabaseCache();
+    }
+
+    let successCount = 0;
+    let skippedCount = 0;
+    const sortedTxs = [...transactions].reverse();
+
+    for (let i = 0; i < sortedTxs.length; i++) {
+      const tx = sortedTxs[i];
+      const res = await this.syncSupabaseTransaction(tx, { force: options.force !== false });
+      if (res && res.success) {
+        if (res.skipped) skippedCount++;
+        else successCount++;
+      }
+      if (typeof progressCallback === 'function') {
+        progressCallback(i + 1, sortedTxs.length);
+      }
+      await new Promise(r => setTimeout(r, 60));
+    }
+    return { total: sortedTxs.length, success: successCount, skipped: skippedCount };
+  },
+
+  async uploadAllToSupabase(progressCallback) {
+    const res = await this.syncAllToSupabase(progressCallback, { force: true, resetCache: true });
+    return {
+      success: res.success,
+      total: res.total,
+      skipped: res.skipped,
+      message: `Sync Supabase Cloud Selesai! (${res.success} berhasil di-upsert, ${res.skipped} dilewati, dari total ${res.total} transaksi)`
+    };
   },
 
   async fetchSupabaseTransactions() {
