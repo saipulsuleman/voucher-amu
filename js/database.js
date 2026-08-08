@@ -206,7 +206,6 @@ const DB = {
     try {
       const transactions = JSON.parse(this.getStorage().getItem(this.KEYS.TRANSACTIONS)) || [];
       for (const tx of transactions) {
-        if (tx.status === 'VOID') continue;
         const n = parseInt(tx.notaNumber, 10);
         if (!isNaN(n) && n > maxNota) {
           maxNota = n;
@@ -295,6 +294,15 @@ const DB = {
     if (transactions.length !== initialLength) {
       this.getStorage().setItem(this.KEYS.TRANSACTIONS, JSON.stringify(transactions));
       this.deleteSupabaseTransaction(txId);
+      
+      let maxNota = 35;
+      for (const tx of transactions) {
+        const n = parseInt(tx.notaNumber, 10);
+        if (!isNaN(n) && n > maxNota) {
+          maxNota = n;
+        }
+      }
+      this.getStorage().setItem(this.KEYS.LAST_NOTA_NO, String(maxNota));
     }
   },
 
