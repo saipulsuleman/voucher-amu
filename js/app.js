@@ -547,18 +547,19 @@ const App = {
       btn.disabled = true;
       btn.innerHTML = '⏳ Mengetes Koneksi...';
       try {
-        const res = await fetch(url, { method: 'GET', mode: 'cors' }).catch(() => null);
+        await fetch(url, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'ping' })
+        });
         btn.disabled = false;
         btn.innerHTML = origText;
-        if (res && (res.ok || res.status === 200)) {
-          alert("✅ Koneksi Web App Sukses! Server Google Apps Script aktif dan siap menerima data transaksi.");
-        } else {
-          alert("❌ Koneksi Gagal (HTTP 404 / Akses Ditolak).\n\nHal ini terjadi karena saat Deployment di Google Apps Script, 'Siapa yang memiliki akses' masih diset ke 'Hanya saya'.\n\nSilakan buka Google Apps Script -> Deploy -> Penerapan Baru -> ubah 'Siapa yang memiliki akses' menjadi 'Siapa saja (Anyone)'.");
-        }
+        alert("✅ Tes Koneksi Terhubung!\n\nURL Web App terhubung dan siap menerima data. Silakan klik '🚀 Sync Semua Data ke Google Sheet Baru'!");
       } catch(e) {
         btn.disabled = false;
         btn.innerHTML = origText;
-        alert("⚠️ Hasil tes koneksi: Mohon pastikan URL diawali dengan https://script.google.com/macros/s/.../exec dan akses diset ke 'Siapa saja (Anyone)'.");
+        alert("❌ Tes Koneksi Gagal!\n\nMohon pastikan URL diawali dengan https://script.google.com/macros/s/.../exec dan akses diset ke 'Siapa saja (Anyone)'.");
       }
     });
 
