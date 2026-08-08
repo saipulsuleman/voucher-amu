@@ -635,9 +635,8 @@ function doPost(e) {
     var existingData = lastRow > 4 ? sheet.getRange(5, 1, lastRow - 4, 19).getValues() : [];
     
     var txGroups = {};
-    rows.forEach(function(row) {
-      var txId = row.id || row.tx_id || '';
-      if (!txId) return;
+    rows.forEach(function(row, idx) {
+      var txId = row.id || row.tx_id || row.nota_number || ('TX-' + idx);
       if (!txGroups[txId]) txGroups[txId] = [];
       txGroups[txId].push(row);
     });
@@ -646,7 +645,7 @@ function doPost(e) {
       var incomingTxRows = txGroups[txId];
       var matchingSheetRowIndices = [];
       for (var i = 0; i < existingData.length; i++) {
-        if (String(existingData[i][0]) === String(txId)) {
+        if (String(existingData[i][0]) === String(txId) || (existingData[i][2] && String(existingData[i][2]) === String(incomingTxRows[0].nota_number))) {
           matchingSheetRowIndices.push(i + 5);
         }
       }
@@ -672,7 +671,10 @@ function doPost(e) {
         }
       } else {
         incomingTxRows.forEach(function(r, idx) {
-          sheet.appendRow(formatRowData(r, idx + 1));
+          var rowVals = formatRowData(r, idx + 1);
+          var nextRow = sheet.getLastRow() + 1;
+          if (nextRow < 5) nextRow = 5;
+          sheet.getRange(nextRow, 1, 1, 19).setValues([rowVals]);
         });
       }
 
@@ -713,7 +715,7 @@ function ensureHeaders(sheet) {
     ];
     sheet.getRange(4, 1, 1, headers.length).setValues([headers])
       .setBackground("#E2231A").setFontColor("#FFFFFF").setFontWeight("bold").setHorizontalAlignment("center");
-    sheet.setFrozenRows(4);
+    try { sheet.setFrozenRows(4); } catch(e) {}
   }
 }
 
