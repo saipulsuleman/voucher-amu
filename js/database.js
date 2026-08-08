@@ -1172,17 +1172,21 @@ const DB = {
 
       if (payloadRows.length === 0) return true;
 
-      await fetch(webhookUrl, {
+      const payloadObj = {
+        action: 'upsert',
+        tx_id: tx.id || '',
+        rows: payloadRows
+      };
+      const jsonStr = JSON.stringify(payloadObj);
+      const postUrl = webhookUrl + (webhookUrl.includes('?') ? '&' : '?') + 'payload=' + encodeURIComponent(jsonStr);
+
+      await fetch(postUrl, {
         method: 'POST',
         mode: 'no-cors',
         headers: {
           'Content-Type': 'text/plain;charset=utf-8'
         },
-        body: JSON.stringify({
-          action: 'upsert',
-          tx_id: tx.id || '',
-          rows: payloadRows
-        })
+        body: jsonStr
       });
       
       this.markGSheetsItemSynced(signaturesToMark);
