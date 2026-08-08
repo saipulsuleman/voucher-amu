@@ -698,6 +698,12 @@ function responseJSON(obj) {
 }
 
 function ensureHeaders(sheet) {
+  try {
+    if (sheet.getMaxColumns() < 19) {
+      sheet.insertColumnsAfter(sheet.getMaxColumns(), 19 - sheet.getMaxColumns());
+    }
+  } catch(e) {}
+
   var firstCellVal = sheet.getRange(4, 1).getValue();
   if (sheet.getLastRow() < 4 || firstCellVal !== "ID Tx") {
     if (sheet.getLastRow() < 4) sheet.clear();
