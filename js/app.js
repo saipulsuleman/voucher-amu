@@ -515,7 +515,7 @@ const App = {
       btn.innerHTML = '⏳ Menyingkronkan...';
       const res = await DB.syncAllToGoogleSheets((curr, total) => {
         btn.innerHTML = `⏳ Sync (${curr}/${total})...`;
-      });
+      }, { force: true, resetCache: true });
       btn.disabled = false;
       btn.innerHTML = origText;
       alert(`✅ Sinkronisasi Google Sheets Selesai!\n${res.success} dari ${res.total} transaksi berhasil disinkronkan.`);

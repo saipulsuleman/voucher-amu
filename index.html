@@ -606,15 +606,26 @@
           <button id="btn-copy-codegs" class="btn btn-sm" style="background: #0284c7; color: white; border: none;">📋 Salin Skrip Code.gs</button>
         </div>
         <textarea id="codegs-textarea" readonly style="width: 100%; height: 260px; font-family: monospace; font-size: 0.8rem; background: #0f172a; color: #38bdf8; padding: 0.75rem; border-radius: 6px; border: none; resize: vertical;">
+function doGet(e) {
+  return responseJSON({ status: 'success', message: 'Google Apps Script WebApp Active', timestamp: new Date().toISOString() });
+}
+
 function doPost(e) {
   var lock = LockService.getScriptLock();
   lock.tryLock(10000);
 
   try {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (!ss) return responseJSON({ status: 'error', message: 'No active spreadsheet found' });
+    var sheet = ss.getActiveSheet() || ss.getSheets()[0];
     ensureHeaders(sheet);
 
-    var data = JSON.parse(e.postData.contents);
+    var rawContent = (e && e.postData && e.postData.contents) ? e.postData.contents : (e && e.parameter && e.parameter.payload ? e.parameter.payload : null);
+    if (!rawContent) {
+      return responseJSON({ status: 'error', message: 'No post payload received' });
+    }
+
+    var data = JSON.parse(rawContent);
     var rows = Array.isArray(data) ? data : (data.rows || [data]);
     if (!rows || rows.length === 0) {
       return responseJSON({ status: 'success', message: 'No rows provided' });
@@ -684,8 +695,9 @@ function responseJSON(obj) {
 }
 
 function ensureHeaders(sheet) {
-  if (sheet.getLastRow() < 4) {
-    sheet.clear();
+  var firstCellVal = sheet.getRange(4, 1).getValue();
+  if (sheet.getLastRow() < 4 || firstCellVal !== "ID Tx") {
+    if (sheet.getLastRow() < 4) sheet.clear();
     sheet.getRange("A1:S1").merge().setValue("PT. ARBA MITRA USAHA GORONTALO (SPBU 74-961-4)")
       .setFontWeight("bold").setFontSize(14).setFontColor("#E2231A").setHorizontalAlignment("center");
     sheet.getRange("A2:S2").merge().setValue("LAPORAN PENJUALAN VOUCHER - SINKRONISASI OTOMATIS")
