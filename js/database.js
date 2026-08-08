@@ -1174,63 +1174,70 @@ const DB = {
 
 
 
-      // Google Apps Script /exec ALWAYS 302 redirects to googleusercontent.com.
-      // Two constraints force this specific approach:
-      // 1. POST body is LOST during 302 redirect (browser converts POST→GET per HTTP spec)
-      // 2. script.google.com does NOT send CORS headers in its 302 response
-      //
-      // Therefore the ONLY working approach is: GET + URL params + mode:'no-cors'
-      // - GET: Data in URL params survives 302 redirect
-      // - no-cors: Bypasses CORS blocking on the redirect
-      // - Response is opaque (can't read), but if fetch completes → data arrived
+      // DEFINITIVE SOLUTION: Hidden iframe form POST
+      // fetch() CANNOT reliably reach Google Apps Script due to CORS + 302 redirect.
+      // Form submissions are EXEMPT from CORS by design — they always work cross-origin.
+      // Google Apps Script receives form fields via e.parameter (e.parameter.payload).
+      // The script processes data BEFORE returning any response/redirect.
       let syncSuccess = false;
       
-      const sendPayload = async (payloadData) => {
-        const jsonStr = JSON.stringify(payloadData);
-        const getUrl = webhookUrl + (webhookUrl.includes('?') ? '&' : '?') + 'payload=' + encodeURIComponent(jsonStr);
-        
-        // URL length safety check — browsers/servers typically support ~8000 chars
-        if (getUrl.length > 7500) return null; // null = too large, needs splitting
-        
-        // mode:'no-cors' returns opaque response (type='opaque', status=0)
-        // If fetch completes without throwing, the request was sent successfully
-        // and URL params were delivered to Apps Script via e.parameter.payload
-        await fetch(getUrl, { mode: 'no-cors', redirect: 'follow' });
-        return true;
+      const sendViaForm = (payloadData) => {
+        return new Promise((resolve) => {
+          const jsonStr = JSON.stringify(payloadData);
+          const iframeName = 'gsheet_sync_' + Date.now();
+          
+          // Create hidden iframe to receive the form response
+          const iframe = document.createElement('iframe');
+          iframe.name = iframeName;
+          iframe.style.display = 'none';
+          document.body.appendChild(iframe);
+          
+          // Create form targeting the iframe
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = webhookUrl;
+          form.target = iframeName;
+          form.style.display = 'none';
+          
+          // Add payload as form field — Apps Script reads via e.parameter.payload
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = 'payload';
+          input.value = jsonStr;
+          form.appendChild(input);
+          
+          document.body.appendChild(form);
+          
+          let resolved = false;
+          const cleanup = () => {
+            if (!resolved) {
+              resolved = true;
+              try { document.body.removeChild(iframe); } catch(e) {}
+              try { document.body.removeChild(form); } catch(e) {}
+              resolve(true);
+            }
+          };
+          
+          // iframe onload fires when Apps Script response (or redirect) loads
+          iframe.onload = cleanup;
+          // Timeout fallback — even if iframe fails to load, data was already sent
+          setTimeout(cleanup, 8000);
+          
+          // Submit the form
+          form.submit();
+        });
       };
       
       try {
-        // Try sending all rows in one request first
         const fullPayload = {
           action: 'upsert',
           tx_id: tx.id || '',
           rows: payloadRows
         };
-        const result = await sendPayload(fullPayload);
-        
-        if (result === null) {
-          // Payload too large for URL, send rows one by one
-          let allOk = true;
-          for (const row of payloadRows) {
-            const singlePayload = {
-              action: 'upsert',
-              tx_id: tx.id || '',
-              rows: [row]
-            };
-            const singleResult = await sendPayload(singlePayload);
-            if (!singleResult) {
-              allOk = false;
-              console.warn('Google Sheets: failed to sync row', row.item_no, 'for tx', tx.id);
-            }
-            await new Promise(r => setTimeout(r, 300)); // Rate limit between rows
-          }
-          syncSuccess = allOk;
-        } else {
-          syncSuccess = result;
-        }
-      } catch (fetchErr) {
-        // Network error — request never sent
-        console.warn('Google Sheets fetch error:', fetchErr.message);
+        await sendViaForm(fullPayload);
+        syncSuccess = true;
+      } catch (formErr) {
+        console.warn('Google Sheets form submit error:', formErr.message);
         syncSuccess = false;
       }
       

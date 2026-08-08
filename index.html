@@ -626,12 +626,33 @@ function handleRequest(e) {
     ensureGridSize(sheet);
     ensureHeaders(sheet);
 
-    var rawContent = (e && e.postData && e.postData.contents) ? e.postData.contents : (e && e.parameter && e.parameter.payload ? e.parameter.payload : null);
+    var rawContent = null;
+    // Priority 1: e.parameter.payload — works for GET params AND POST form fields
+    // Google auto-decodes both URL params and form fields into e.parameter
+    if (e && e.parameter && e.parameter.payload) {
+      rawContent = e.parameter.payload;
+    }
+    // Priority 2: e.postData.contents — only for raw JSON POST body (NOT form-encoded)
+    else if (e && e.postData && e.postData.contents) {
+      rawContent = e.postData.contents;
+    }
+
     if (!rawContent) {
       return responseJSON({ status: 'success', message: 'WebApp Active (No Payload)' });
     }
 
-    var data = JSON.parse(rawContent);
+    var data;
+    try {
+      data = JSON.parse(rawContent);
+    } catch(parseErr) {
+      // If rawContent is form-encoded (payload=...), try to extract the value
+      if (rawContent.indexOf('payload=') === 0) {
+        rawContent = decodeURIComponent(rawContent.substring(8));
+        data = JSON.parse(rawContent);
+      } else {
+        throw parseErr;
+      }
+    }
     var rows = Array.isArray(data) ? data : (data.rows || [data]);
     if (!rows || rows.length === 0) {
       return responseJSON({ status: 'success', message: 'No rows provided' });

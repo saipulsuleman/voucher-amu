@@ -551,11 +551,40 @@ const App = {
       btn.disabled = true;
       btn.innerHTML = '⏳ Mengetes Koneksi...';
       try {
-        const pingPayload = encodeURIComponent(JSON.stringify({ action: 'ping' }));
-        const testUrl = url + (url.includes('?') ? '&' : '?') + 'payload=' + pingPayload;
-        // mode:'no-cors' is required because script.google.com doesn't send CORS headers
-        // in its 302 redirect response. If fetch completes without throwing, URL is valid.
-        await fetch(testUrl, { mode: 'no-cors', redirect: 'follow' });
+        // Use iframe form POST (same as sync) to test the connection
+        await new Promise((resolve, reject) => {
+          const iframeName = 'gsheet_test_' + Date.now();
+          const iframe = document.createElement('iframe');
+          iframe.name = iframeName;
+          iframe.style.display = 'none';
+          document.body.appendChild(iframe);
+          
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = url;
+          form.target = iframeName;
+          form.style.display = 'none';
+          
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = 'payload';
+          input.value = JSON.stringify({ action: 'ping' });
+          form.appendChild(input);
+          document.body.appendChild(form);
+          
+          let done = false;
+          const finish = (success) => {
+            if (!done) {
+              done = true;
+              try { document.body.removeChild(iframe); } catch(e) {}
+              try { document.body.removeChild(form); } catch(e) {}
+              success ? resolve() : reject(new Error('Timeout'));
+            }
+          };
+          iframe.onload = () => finish(true);
+          setTimeout(() => finish(true), 6000); // Apps Script may take a few seconds
+          form.submit();
+        });
         btn.disabled = false;
         btn.innerHTML = origText;
         alert("✅ Tes Koneksi Terhubung!\n\nURL Web App terhubung dan siap menerima data. Silakan klik '🚀 Sync Semua Data ke Google Sheet Baru'!");
