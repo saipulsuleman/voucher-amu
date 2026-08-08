@@ -536,6 +536,32 @@ const App = {
       alert("✅ URL Web App Google Sheet Baru berhasil disimpan! Anda dapat menekan tombol 'Sync Semua Data' untuk menyalurkan seluruh data ke Google Sheet Baru.");
     });
 
+    document.getElementById('btn-test-gsheet-url')?.addEventListener('click', async () => {
+      const url = document.getElementById('input-gsheet-url')?.value.trim() || DB.getGoogleSheetsUrl();
+      if (!url) {
+        alert("⚠️ Mohon masukkan URL Web App Google Apps Script terlebih dahulu!");
+        return;
+      }
+      const btn = document.getElementById('btn-test-gsheet-url');
+      const origText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Mengetes Koneksi...';
+      try {
+        const res = await fetch(url, { method: 'GET', mode: 'cors' }).catch(() => null);
+        btn.disabled = false;
+        btn.innerHTML = origText;
+        if (res && (res.ok || res.status === 200)) {
+          alert("✅ Koneksi Web App Sukses! Server Google Apps Script aktif dan siap menerima data transaksi.");
+        } else {
+          alert("❌ Koneksi Gagal (HTTP 404 / Akses Ditolak).\n\nHal ini terjadi karena saat Deployment di Google Apps Script, 'Siapa yang memiliki akses' masih diset ke 'Hanya saya'.\n\nSilakan buka Google Apps Script -> Deploy -> Penerapan Baru -> ubah 'Siapa yang memiliki akses' menjadi 'Siapa saja (Anyone)'.");
+        }
+      } catch(e) {
+        btn.disabled = false;
+        btn.innerHTML = origText;
+        alert("⚠️ Hasil tes koneksi: Mohon pastikan URL diawali dengan https://script.google.com/macros/s/.../exec dan akses diset ke 'Siapa saja (Anyone)'.");
+      }
+    });
+
     document.getElementById('btn-sync-all-gsheet')?.addEventListener('click', async () => {
       const btn = document.getElementById('btn-sync-all-gsheet');
       const origText = btn.innerHTML;
