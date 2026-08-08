@@ -619,6 +619,7 @@ function doPost(e) {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     if (!ss) return responseJSON({ status: 'error', message: 'No active spreadsheet found' });
     var sheet = ss.getActiveSheet() || ss.getSheets()[0];
+    ensureGridSize(sheet);
     ensureHeaders(sheet);
 
     var rawContent = (e && e.postData && e.postData.contents) ? e.postData.contents : (e && e.parameter && e.parameter.payload ? e.parameter.payload : null);
@@ -658,11 +659,12 @@ function doPost(e) {
 
         for (var j = 0; j < newCount; j++) {
           var targetRow = firstRowIdx + j;
+          var rowVals = formatRowData(incomingTxRows[j], j + 1);
           if (j < existingCount) {
-            sheet.getRange(targetRow, 1, 1, 19).setValues([formatRowData(incomingTxRows[j], j + 1)]);
+            sheet.getRange(targetRow, 1, 1, 19).setValues([rowVals]);
           } else {
             sheet.insertRowAfter(firstRowIdx + j - 1);
-            sheet.getRange(targetRow, 1, 1, 19).setValues([formatRowData(incomingTxRows[j], j + 1)]);
+            sheet.getRange(targetRow, 1, 1, 19).setValues([rowVals]);
           }
         }
         if (existingCount > newCount) {
@@ -697,12 +699,19 @@ function responseJSON(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-function ensureHeaders(sheet) {
+function ensureGridSize(sheet) {
   try {
     if (sheet.getMaxColumns() < 19) {
       sheet.insertColumnsAfter(sheet.getMaxColumns(), 19 - sheet.getMaxColumns());
     }
+    if (sheet.getMaxRows() < 100) {
+      sheet.insertRowsAfter(sheet.getMaxRows(), 100 - sheet.getMaxRows());
+    }
   } catch(e) {}
+}
+
+function ensureHeaders(sheet) {
+  ensureGridSize(sheet);
 
   var firstCellVal = sheet.getRange(4, 1).getValue();
   if (sheet.getLastRow() < 4 || firstCellVal !== "ID Tx") {
