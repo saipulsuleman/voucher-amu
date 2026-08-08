@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 550" width="100%" height="100%">
+  <!-- Red Outer Diamond -->
+  <polygon points="500,40 960,275 500,510 40,275" fill="none" stroke="#E2231A" stroke-width="26" stroke-linejoin="miter"/>
+  
+  <!-- ARBA Custom Integrated Letterforms inside Diamond -->
+  <g fill="#E2231A">
+    <!-- Left A -->
+    <path d="M 285,135 L 365,135 L 365,415 L 315,415 L 315,260 L 285,260 L 285,415 L 235,415 L 235,225 Z M 285,180 L 285,220 L 315,220 L 315,180 Z" />
+    
+    <!-- Center R -->
+    <path d="M 390,105 L 480,105 C 510,105 530,120 530,150 C 530,175 515,195 490,202 L 535,415 L 480,415 L 440,215 L 440,415 L 390,415 Z M 440,150 L 440,175 L 475,175 C 485,175 490,170 490,162 C 490,155 485,150 475,150 Z" />
+    
+    <!-- Center B -->
+    <path d="M 550,105 L 635,105 C 665,105 685,120 685,145 C 685,165 670,180 650,188 C 675,195 690,215 690,240 C 690,270 665,285 635,285 L 550,285 Z M 600,145 L 600,175 L 630,175 C 638,175 642,170 642,160 C 642,150 638,145 630,145 Z M 600,215 L 600,245 L 635,245 C 643,245 648,240 648,230 C 648,220 643,215 635,215 Z" transform="scale(1, 1.45) translate(0, -60)" />
+
+    <!-- Right A -->
+    <path d="M 715,135 L 765,135 L 765,225 L 765,415 L 715,415 L 715,260 L 685,260 L 685,415 L 635,415 L 635,135 Z M 685,180 L 685,220 L 715,220 L 715,180 Z" />
+  </g>
+
+  <!-- High-Precision ARBA GROUP Path Vector derived from Image 2 -->
+  <g fill="#E2231A">
+    <!-- Re-drawn Exact Replica from Image 2 -->
+    <path d="M 230,130 L 360,130 L 360,420 L 305,420 L 305,270 L 285,270 L 285,420 L 230,420 Z M 285,180 L 305,180 L 305,220 L 285,220 Z"/>
+  </g>
+
+  <!-- GROUP Text below Diamond (Exact Font Match) -->
+  <text x="500" y="620" font-family="'Arial Black', 'Impact', sans-serif" font-size="95" font-weight="900" fill="#E2231A" text-anchor="middle" letter-spacing="12">GROUP</text>
+</svg>

@@ -1,0 +1,59 @@
+{
+  "version": "1.0",
+  "exportedAt": "2026-07-31T20:00:00.000Z",
+  "company": "PT. ARBA MITRA USAHA GORONTALO (SPBU 74-961-4)",
+  "transactions": [
+    {
+      "id": "TX-1700000000000-034",
+      "notaNumber": 34,
+      "transactionDate": "2026-07-26",
+      "customerName": "MUSEUM",
+      "officerName": "Saipul Karim Suleman",
+      "clearingFee": 6500,
+      "status": "SUKSES",
+      "items": [
+        {
+          "voucherCode": "V50",
+          "startSerial": "147801",
+          "endSerial": "147840",
+          "quantity": 40,
+          "itemSubtotal": 2000000,
+          "adminSubtotal": 20000,
+          "customPrice": 50000
+        }
+      ],
+      "createdAt": "2026-07-26T12:00:00.000Z"
+    },
+    {
+      "id": "TX-1700000000000-033",
+      "notaNumber": 33,
+      "transactionDate": "2026-07-23",
+      "customerName": "BEA CUKAI",
+      "officerName": "Ady Praditya",
+      "clearingFee": 0,
+      "status": "SUKSES",
+      "items": [
+        {
+          "voucherCode": "V200",
+          "startSerial": "200101",
+          "endSerial": "200200",
+          "quantity": 100,
+          "itemSubtotal": 20000000,
+          "adminSubtotal": 50000,
+          "customPrice": 200000
+        }
+      ],
+      "createdAt": "2026-07-23T12:00:00.000Z"
+    }
+  ],
+  "customers": [
+    "BEA CUKAI",
+    "MUSEUM"
+  ],
+  "officers": [
+    "Saipul Karim Suleman",
+    "Ady Praditya",
+    "Staf Operator Shift"
+  ],
+  "lastNotaNo": "34"
+}

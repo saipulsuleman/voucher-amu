@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistem Otomasi Voucher & Nota Kwitansi - PT. Arba Mitra Usaha Gorontalo (SPBU 74-961-4)</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/print.css">
+</head>
+<body>
+
+  <!-- Dedicated Mount Point for Print Engine (Outside App UI Wrapper) -->
+  <div id="print-mount-point"></div>
+
+  <!-- App Header -->
+  <header class="app-header">
+    <div class="brand-container">
+      <img src="assets/logo-arba.png" alt="ARBA GROUP Logo" class="brand-logo">
+      <div class="brand-title">
+        <h1>PT. ARBA MITRA USAHA GORONTALO</h1>
+        <p>Sistem Otomasi Voucher BBM (SPBU 74 - 961 - 4)</p>
+      </div>
+    </div>
+    
+    <div class="officer-badge" style="display: flex; gap: 1rem; align-items: center;">
+      <div id="sync-status-badge" style="padding: 0.4rem 0.8rem; border-radius: 20px; font-size: 0.8rem; font-weight: bold; background: #fee2e2; color: #b91c1c; display: flex; align-items: center; gap: 0.4rem; border: 1px solid #f87171;">
+        <span class="status-dot" style="width: 8px; height: 8px; background: #ef4444; border-radius: 50%; display: inline-block;"></span>
+        <span id="sync-status-text">Offline</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-size: 0.9rem; font-weight: 500;">👤 Petugas:</span>
+        <button id="btn-login-officer" class="btn btn-primary" style="padding: 0.4rem 1rem; font-size: 0.9rem; font-weight: bold; border-radius: 6px;">Login</button>
+        <span id="logged-in-officer-name" style="display: none; font-weight: bold; background: rgba(255,255,255,0.95); padding: 0.4rem 1rem; border-radius: 6px; border: 1px solid #cbd5e1; color: #0f172a;"></span>
+        <button id="btn-logout-officer" class="btn btn-secondary btn-sm" style="display: none; padding: 0.4rem 0.6rem; font-size: 0.8rem;">Keluar</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation & Main App Wrapper -->
+  <div class="main-wrapper" id="app-ui-wrapper">
+    <nav class="nav-tabs">
+      <button class="tab-btn active" data-tab="new-transaction">➕ Transaksi Baru</button>
+      <button class="tab-btn" data-tab="history">📋 Riwayat & Rekap Excel</button>
+      <button class="tab-btn" data-tab="dashboard">📈 Dashboard Keuangan</button>
+      <button class="tab-btn" data-tab="cloud">☁️ Cloud & Backup Data</button>
+    </nav>
+
+    <!-- TAB 1: NEW TRANSACTION FORM -->
+    <div class="tab-panel active" id="tab-new-transaction">
+      <div class="grid-container">
+        <!-- Left Column: Input Form -->
+        <div>
+          <div class="card">
+            <div class="card-title">
+              <span>📝 Form Input Nota & Kwitansi</span>
+              <span style="font-size: 0.8rem; color: #64748b; font-weight: normal;">*Nomor Seri Auto-Kalkulasi</span>
+            </div>
+
+            <!-- Edit Mode Alert Banner -->
+            <div id="editing-mode-alert" style="display: none; background: #e0f2fe; border: 1px solid #38bdf8; color: #0369a1; padding: 0.75rem 1rem; border-radius: 8px; font-weight: bold; margin-bottom: 1rem; align-items: center; justify-content: space-between;">
+              <span id="editing-mode-text">✏️ Mode Edit: Mengubah Nota #</span>
+              <button type="button" id="btn-cancel-edit" class="btn btn-secondary btn-sm" style="background: #bae6fd; color: #0284c7; border: none; font-size: 0.8rem; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">➕ Lanjut ke Nota Baru</button>
+            </div>
+
+            <!-- Overlap Warning Alert Box -->
+            <div id="overlap-error-alert" style="display: none; background:#fee2e2; border-color:#ef4444; color:#b91c1c; margin-bottom:1rem;" class="terbilang-banner"></div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">No. Nota Kupon</label>
+                <input type="number" id="input-nota-no" class="form-control" style="font-weight: bold; color: var(--primary-red); background-color: #f1f5f9; cursor: not-allowed;" value="44" readonly title="🔒 Nomor Nota Kupon Terkunci Otomatis (Auto-Increment)">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Tanggal Transaksi</label>
+                <input type="date" id="input-date" class="form-control">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Petugas SPBU</label>
+                <select id="select-officer" class="form-select"></select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Diserahkan Kepada (Dinas / Instansi / Pembeli)</label>
+              <div class="customer-input-group">
+                <select id="select-customer-dropdown" class="form-select customer-select-flex">
+                  <!-- Populated dynamically with all 80 agencies -->
+                </select>
+                <input type="text" id="input-customer" class="form-control customer-text-flex" list="customer-list" placeholder="Ketik instansi / pilih dari dropdown ➔" value="BEA CUKAI">
+                <datalist id="customer-list">
+                  <!-- Autocomplete loaded dynamically from DB -->
+                </datalist>
+              </div>
+            </div>
+
+            <!-- Customer History Hint -->
+            <div id="customer-history-hint" style="display: none; background: #f0fdf4; border: 1px solid #86efac; color: #166534; padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.82rem; margin-bottom: 0.75rem;"></div>
+
+            <!-- Per-Denomination Serial Lock Status Bar -->
+            <div id="denom-last-serials-bar" style="margin-bottom: 0.75rem; background: #f8fafc; border: 1px dashed #cbd5e1; padding: 0.4rem 0.75rem; border-radius: 6px; font-size: 0.8rem; color: #334155; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+              <strong>📌 Status Seri Terakhir per Pecahan:</strong> <span id="denom-serials-content">Memuat data...</span>
+            </div>
+
+            <!-- Multi-Row Voucher Items Table -->
+            <div class="form-group">
+              <label class="form-label">Daftar Pecahan Voucher (Dapat Tambah Baris)</label>
+              <div class="item-table-wrapper">
+                <table class="item-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 25%;">Pecahan</th>
+                      <th style="width: 17%;">Seri Awal</th>
+                      <th style="width: 17%;">Seri Akhir</th>
+                      <th style="width: 11%;">Lembar</th>
+                      <th style="width: 14%;">Harga/Lbr</th>
+                      <th style="width: 16%;">Subtotal</th>
+                      <th style="width: 4%;"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="voucher-rows-body">
+                    <!-- Dynamic rows rendered by JS -->
+                  </tbody>
+                </table>
+              </div>
+              <button type="button" id="btn-add-row" class="btn btn-secondary btn-sm">➕ Tambah Baris Pecahan</button>
+            </div>
+
+            <!-- Dual-Channel Payment Methods Section -->
+            <div class="form-group" style="background: #f0f9ff; padding: 1rem; border-radius: 8px; border: 1px solid #bae6fd; margin-top: 1rem;">
+              <div style="font-weight: 700; color: #0369a1; font-size: 0.88rem; margin-bottom: 0.75rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+                <span>💳 Metode Pembayaran (Dual-Channel)</span>
+                <label style="font-size: 0.8rem; color: #0284c7; font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 0.35rem;">
+                  <input type="checkbox" id="chk-sync-payment" checked>
+                  <span>Samakan Pembayaran Admin dengan Voucher</span>
+                </label>
+              </div>
+              <div class="form-row" style="margin-bottom: 0;">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label" style="font-size: 0.82rem; color: #1e3a8a;">Pembayaran Voucher BBM</label>
+                  <select id="select-payment-voucher" class="form-select" style="font-weight: 600; border-color: #93c5fd; background-color: #ffffff;">
+                    <option value="Tunai" selected>💵 Tunai (Cash)</option>
+                    <option value="Transfer BRI">🏦 Transfer BRI</option>
+                    <option value="Transfer Mandiri">🏦 Transfer Mandiri</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label" style="font-size: 0.82rem; color: #92400e;">Pembayaran Biaya Admin</label>
+                  <select id="select-payment-admin" class="form-select" style="font-weight: 600; border-color: #fcd34d; background-color: #ffffff;">
+                    <option value="Tunai" selected>💵 Tunai (Cash)</option>
+                    <option value="Transfer BRI">🏦 Transfer BRI</option>
+                    <option value="Transfer Mandiri">🏦 Transfer Mandiri</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Optional Clearing Fee Section -->
+            <div class="form-group" style="background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px dashed #cbd5e1; margin-top: 1rem;">
+              <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: bold; cursor: pointer;">
+                <input type="checkbox" id="chk-clearing">
+                <span>Aktifkan Biaya Clearing Opsional (Bank / Admin Tambahan)</span>
+              </label>
+              <div style="margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                <span style="font-size: 0.85rem; color: #64748b;">Nominal Clearing (Rp):</span>
+                <input type="number" id="input-clearing" class="form-control" style="width: 160px; font-weight: bold;" value="6500" disabled>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Summary & Actions -->
+        <div>
+          <div class="card">
+            <div class="card-title">
+              <span>🧮 Ringkasan Kalkulasi</span>
+            </div>
+
+            <div class="summary-section voucher-section">
+              <div class="summary-section-header">🎟️ PERHITUNGAN VOUCHER BBM</div>
+              <div class="summary-item">
+                <span>Total Lembar:</span>
+                <strong id="sum-total-sheets">40 Lbr</strong>
+              </div>
+              <div class="summary-item highlight">
+                <span>Subtotal Nominal Voucher:</span>
+                <strong id="sum-voucher-subtotal" style="color: #1e40af;">Rp 2.000.000</strong>
+              </div>
+              <div class="terbilang-sub-banner voucher-terbilang" id="sum-voucher-terbilang">
+                DUA JUTA RUPIAH
+              </div>
+            </div>
+
+            <div class="summary-section admin-section" style="margin-top: 1rem;">
+              <div class="summary-section-header">⚙️ PERHITUNGAN BIAYA ADMIN & CLEARING</div>
+              <div class="summary-item">
+                <span>Biaya Cetak Admin (@500):</span>
+                <strong id="sum-admin-fee">Rp 20.000</strong>
+              </div>
+              <div class="summary-item">
+                <span>Biaya Clearing (Opsional):</span>
+                <strong id="sum-clearing-fee">Rp 0</strong>
+              </div>
+              <div class="summary-item highlight">
+                <span>Subtotal Admin & Clearing:</span>
+                <strong id="sum-admin-clearing-subtotal" style="color: #d97706;">Rp 20.000</strong>
+              </div>
+              <div class="terbilang-sub-banner admin-terbilang" id="sum-admin-clearing-terbilang">
+                DUA PULUH RIBU RUPIAH
+              </div>
+            </div>
+
+            <div class="summary-section grand-section" style="margin-top: 1rem;">
+              <div class="summary-item total">
+                <span>GRAND TOTAL (GABUNGAN):</span>
+                <span id="sum-grand-total">Rp 2.020.000</span>
+              </div>
+              <div class="terbilang-banner" id="sum-terbilang">
+                DUA JUTA DUA PULUH RIBU RUPIAH
+              </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1.5rem;">
+
+              <!-- Save Only -->
+              <button id="btn-save-only" class="btn btn-save-action">
+                💾 Simpan Transaksi
+              </button>
+
+              <!-- Divider -->
+              <div style="display: flex; align-items: center; gap: 0.5rem; color: #94a3b8; font-size: 0.8rem; font-weight: 600;">
+                <div style="flex:1; height:1px; background:#e2e8f0;"></div>
+                <span>atau cetak langsung</span>
+                <div style="flex:1; height:1px; background:#e2e8f0;"></div>
+              </div>
+
+              <!-- Print Buttons: 3 columns -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem;">
+                <button id="btn-print-nota" class="btn btn-print-action-red">
+                  🖨️ Cetak Nota
+                </button>
+                <button id="btn-print-kwitansi" class="btn btn-print-action-slate">
+                  🖨️ Cetak Kwitansi
+                </button>
+                <button id="btn-print-voucher" class="btn btn-print-action-emerald" style="background: linear-gradient(135deg, #059669, #10b981); color: white; border: none; padding: 0.75rem 0.5rem; font-weight: 700; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.4rem; transition: transform 0.2s, box-shadow 0.2s;">
+                  🖨️ Cetak Voucher
+                </button>
+              </div>
+
+              <button id="btn-wa-share" class="btn btn-success" style="padding: 0.85rem; font-size: 0.95rem; font-weight: 700;">
+                📱 Kirim Ringkasan ke WA Bendahara
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Document Preview Section (Di bawah Grid Form & Ringkasan) -->
+      <div class="card" style="margin-top: 1.5rem;">
+        <div class="card-title">
+          <span>👁️ Preview Tampilan Cetak Dokumen</span>
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button id="btn-preview-nota" class="btn btn-primary btn-sm">Nota & Kwitansi (F4 3-Up)</button>
+            <button id="btn-preview-kwitansi" class="btn btn-secondary btn-sm">Kwitansi Resmi</button>
+            <button id="btn-preview-voucher" class="btn btn-secondary btn-sm">Voucher Fisik (Kupon)</button>
+          </div>
+        </div>
+
+        <div class="preview-container">
+          <div id="preview-render-area">
+            <!-- Dynamic Rendered Print Layout -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: HISTORY & MULTI-SHEET EXCEL EXPORT -->
+    <div class="tab-panel" id="tab-history">
+      <!-- KPI Summary Cards Grid -->
+      <div class="kpi-grid" id="history-kpi-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+        <div class="kpi-card" style="background: white; border-radius: var(--radius-md); padding: 1rem; border: 1px solid #e2e8f0; box-shadow: var(--shadow-sm); border-left: 4px solid #3b82f6;">
+          <div style="font-size: 0.78rem; font-weight: 700; color: #64748b; text-transform: uppercase;">📈 Total Transaksi</div>
+          <div id="kpi-total-tx" style="font-size: 1.4rem; font-weight: 900; color: #1e293b; margin-top: 0.25rem;">0 Nota</div>
+        </div>
+        <div class="kpi-card" style="background: white; border-radius: var(--radius-md); padding: 1rem; border: 1px solid #e2e8f0; box-shadow: var(--shadow-sm); border-left: 4px solid #059669;">
+          <div style="font-size: 0.78rem; font-weight: 700; color: #64748b; text-transform: uppercase;">🎟️ Total Lembar Voucher</div>
+          <div id="kpi-total-sheets" style="font-size: 1.4rem; font-weight: 900; color: #047857; margin-top: 0.25rem;">0 Lbr</div>
+        </div>
+        <div class="kpi-card" style="background: white; border-radius: var(--radius-md); padding: 1rem; border: 1px solid #e2e8f0; box-shadow: var(--shadow-sm); border-left: 4px solid #6366f1;">
+          <div style="font-size: 0.78rem; font-weight: 700; color: #64748b; text-transform: uppercase;">💵 Subtotal Voucher</div>
+          <div id="kpi-voucher-subtotal" style="font-size: 1.4rem; font-weight: 900; color: #4338ca; margin-top: 0.25rem;">Rp 0</div>
+        </div>
+        <div class="kpi-card" style="background: white; border-radius: var(--radius-md); padding: 1rem; border: 1px solid #e2e8f0; box-shadow: var(--shadow-sm); border-left: 4px solid #f59e0b;">
+          <div style="font-size: 0.78rem; font-weight: 700; color: #64748b; text-transform: uppercase;">⚙️ Admin & Clearing</div>
+          <div id="kpi-admin-subtotal" style="font-size: 1.4rem; font-weight: 900; color: #b45309; margin-top: 0.25rem;">Rp 0</div>
+        </div>
+        <div class="kpi-card" style="background: white; border-radius: var(--radius-md); padding: 1rem; border: 1px solid #e2e8f0; box-shadow: var(--shadow-sm); border-left: 4px solid var(--primary-red);">
+          <div style="font-size: 0.78rem; font-weight: 700; color: #64748b; text-transform: uppercase;">💰 Grand Total Omset</div>
+          <div id="kpi-grand-total" style="font-size: 1.4rem; font-weight: 900; color: var(--primary-red); margin-top: 0.25rem;">Rp 0</div>
+        </div>
+      </div>
+
+      <!-- Card Filter & Table Wrapper -->
+      <div class="card">
+        <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+          <div>
+            <span>📋 Riwayat Transaksi & Export Laporan</span>
+            <span id="hist-filtered-count-badge" style="font-size: 0.8rem; font-weight: normal; color: #64748b; margin-left: 0.5rem;">(Memuat data...)</span>
+          </div>
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button id="btn-sync-gsheet" class="btn btn-primary btn-sm" style="display: flex; align-items: center; gap: 0.4rem; background: #059669; border-color: #059669;" title="Kirim/sinkronkan data transaksi ke Google Sheets">
+              🟢 Sync ke Google Sheets
+            </button>
+            <button id="btn-export-excel" class="btn btn-success btn-sm" style="display: flex; align-items: center; gap: 0.4rem;">
+              📊 Export Laporan (Digabung)
+            </button>
+            <button id="btn-export-accounting" class="btn btn-warning btn-sm" style="display: flex; align-items: center; gap: 0.4rem; color: #fff; background: #d97706; border-color: #d97706;">
+              📈 Export Akuntansi & Audit (Dipisah)
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter Controls Bar -->
+        <div class="filter-controls-bar" style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 1rem; border-radius: 8px; margin-bottom: 1.25rem;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.75rem; align-items: end;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 0.8rem; font-weight: 700;">🔍 Cari Instansi / Nota / Seri</label>
+              <input type="text" id="hist-search-input" class="form-control" placeholder="Ketik kata kunci...">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 0.8rem; font-weight: 700;">📅 Tanggal Mulai</label>
+              <input type="date" id="hist-date-start" class="form-control">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 0.8rem; font-weight: 700;">📅 Tanggal Akhir</label>
+              <input type="date" id="hist-date-end" class="form-control">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 0.8rem; font-weight: 700;">💳 Metode Pembayaran</label>
+              <select id="hist-filter-payment" class="form-select">
+                <option value="ALL" selected>Semua Pembayaran</option>
+                <option value="Tunai">💵 Tunai</option>
+                <option value="Transfer BRI">🏦 Transfer BRI</option>
+                <option value="Transfer Mandiri">🏦 Transfer Mandiri</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 0.8rem; font-weight: 700;">📌 Status Nota</label>
+              <select id="hist-filter-status" class="form-select">
+                <option value="ALL" selected>Semua Status</option>
+                <option value="SUKSES">✅ SUKSES</option>
+                <option value="VOID">❌ VOID</option>
+              </select>
+            </div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px dashed #e2e8f0; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="display: flex; gap: 0.4rem; align-items: center;">
+              <span style="font-size: 0.78rem; font-weight: 700; color: #64748b;">Filter Cepat Tanggal:</span>
+              <button type="button" class="btn btn-secondary btn-sm btn-quick-date" data-range="today" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">Hari Ini</button>
+              <button type="button" class="btn btn-secondary btn-sm btn-quick-date" data-range="month" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">Bulan Ini</button>
+              <button type="button" class="btn btn-secondary btn-sm btn-quick-date" data-range="all" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">Semua</button>
+            </div>
+            <button type="button" id="btn-reset-hist-filter" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.65rem; font-size: 0.8rem; background: #e2e8f0; color: #334155; border: none;">
+              🔄 Reset Filter
+            </button>
+          </div>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th width="80">No. Nota</th>
+                <th width="100">Tanggal</th>
+                <th>Nama Instansi</th>
+                <th>Rincian Pecahan & Seri</th>
+                <th>Grand Total</th>
+                <th width="100">Status</th>
+                <th width="120">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="history-table-body">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div id="history-pagination-wrapper" style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; flex-wrap: wrap; gap: 0.75rem;">
+          <div style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.85rem; color: #64748b;">
+            <span id="hist-page-info">Menampilkan 0 dari 0 transaksi</span>
+            <div style="display: flex; align-items: center; gap: 0.35rem;">
+              <span>Tampilkan:</span>
+              <select id="hist-rows-per-page" class="form-select" style="width: auto; padding: 0.2rem 0.5rem; font-size: 0.8rem;">
+                <option value="10">10</option>
+                <option value="20" selected>20</option>
+                <option value="50">50</option>
+                <option value="ALL">Semua</option>
+              </select>
+            </div>
+          </div>
+          <div id="hist-pagination-buttons" style="display: flex; gap: 0.35rem;">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: DASHBOARD KEUANGAN -->
+    <div class="tab-panel" id="tab-dashboard">
+      <div class="grid-container">
+        <!-- Filter Bar Dashboard -->
+        <div class="card" style="margin-bottom: 1rem;">
+          <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 0.8rem;">Rentang Waktu</label>
+              <select id="dash-filter-range" class="form-select" style="min-width: 150px;">
+                <option value="all">Semua Waktu</option>
+                <option value="this_month" selected>Bulan Ini</option>
+                <option value="last_month">Bulan Lalu</option>
+                <option value="this_year">Tahun Ini</option>
+              </select>
+            </div>
+            <button id="btn-refresh-dashboard" class="btn btn-primary btn-sm" style="height: 38px;">🔄 Segarkan Data</button>
+          </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+          <div class="card" style="padding: 1.25rem; text-align: center; background: #eff6ff; border: 1px solid #bfdbfe;">
+            <div style="font-size: 0.85rem; color: #1e3a8a; font-weight: bold; margin-bottom: 0.5rem;">Total Pendapatan Voucher</div>
+            <div id="dash-kpi-voucher" style="font-size: 1.4rem; font-weight: 800; color: #1d4ed8;">Rp 0</div>
+          </div>
+          <div class="card" style="padding: 1.25rem; text-align: center; background: #fefce8; border: 1px solid #fef08a;">
+            <div style="font-size: 0.85rem; color: #854d0e; font-weight: bold; margin-bottom: 0.5rem;">Total Pendapatan Admin</div>
+            <div id="dash-kpi-admin" style="font-size: 1.4rem; font-weight: 800; color: #a16207;">Rp 0</div>
+          </div>
+          <div class="card" style="padding: 1.25rem; text-align: center; background: #f0fdf4; border: 1px solid #bbf7d0;">
+            <div style="font-size: 0.85rem; color: #166534; font-weight: bold; margin-bottom: 0.5rem;">Laba Bersih (Setelah Clearing)</div>
+            <div id="dash-kpi-net" style="font-size: 1.4rem; font-weight: 800; color: #15803d;">Rp 0</div>
+          </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem;">
+          <div class="card">
+            <div class="card-title" style="font-size: 1rem; margin-bottom: 1rem;">📈 Tren Penjualan Harian</div>
+            <div style="position: relative; height: 300px; width: 100%;">
+              <canvas id="chart-trend"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title" style="font-size: 1rem; margin-bottom: 1rem;">💰 Komposisi Pembayaran (Kas vs Bank)</div>
+            <div style="position: relative; height: 300px; width: 100%;">
+              <canvas id="chart-payment"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title" style="font-size: 1rem; margin-bottom: 1rem;">🎫 Distribusi Produk Terjual (Lembar)</div>
+            <div style="position: relative; height: 300px; width: 100%;">
+              <canvas id="chart-product"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: CLOUD SYNC & BACKUP -->
+    <div class="tab-panel" id="tab-cloud">
+      <div class="grid-container">
+        <div class="card">
+          <div class="card-title">
+            <span>☁️ Pengaturan Supabase Cloud Database</span>
+          </div>
+          <p style="margin-bottom: 1rem; color: var(--text-muted);">
+            Masukkan URL dan ANON Key Supabase Anda di bawah ini untuk mengaktifkan sinkronisasi otomatis ke cloud.
+          </p>
+          <div class="form-group">
+            <label class="form-label">Supabase URL</label>
+            <input type="text" id="sb-url" class="form-control" placeholder="https://xyzcompany.supabase.co">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Supabase Anon Key</label>
+            <input type="password" id="sb-key" class="form-control" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6...">
+          </div>
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
+            <button id="btn-save-supabase" class="btn btn-primary">💾 Simpan Konfigurasi Cloud</button>
+            <button id="btn-test-supabase" class="btn btn-secondary">🔍 Tes Koneksi Supabase</button>
+            <button id="btn-upload-all-supabase" class="btn btn-secondary" style="background-color: #059669; color: white; border: none;">☁️ Push Data Local ke Supabase</button>
+            <button id="btn-pull-all-supabase" class="btn btn-primary" style="background-color: #2563eb; color: white; border: none;">🔄 Pull Data dari Supabase</button>
+          </div>
+          <div id="sb-status-msg" style="display: none; padding: 0.75rem; border-radius: 6px; font-size: 0.875rem; font-weight: 500;"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <span>💾 Backup & Restore Manual (JSON)</span>
+          </div>
+          <p style="margin-bottom: 1rem; color: var(--text-muted);">
+            Unduh cadangan data lokal atau pulihkan data jika berpindah laptop/komputer.
+          </p>
+          <div style="display: flex; flex-direction: column; gap: 1rem;">
+            <button id="btn-backup-json" class="btn btn-secondary">💾 Unduh File Cadangan Backup (.json)</button>
+            <button id="btn-restore-json" class="btn btn-secondary">📥 Pulihkan Data dari File (.json)</button>
+            <input type="file" id="file-restore-input" accept=".json" style="display: none;">
+            <button id="btn-reindex-nota" class="btn" style="background-color: #f59e0b; color: white; border: none; font-weight: 600;">🔄 Urutkan Ulang Nomor Nota Berdasarkan Tanggal</button>
+          </div>
+        </div>
+
+        <div class="card" style="grid-column: 1 / -1;">
+          <div class="card-title">
+            <span>📊 Sinkronisasi Otomatis Google Sheets</span>
+          </div>
+          <p style="margin-bottom: 1rem; color: var(--text-muted);">
+            URL Web App Google Apps Script terkonfigurasi otomatis untuk sinkronisasi laporan transaksi real-time ke Google Spreadsheet.
+          </p>
+          <div class="form-group">
+            <label class="form-label">Google Apps Script WebApp URL</label>
+            <input type="text" id="input-gsheet-url" class="form-control" placeholder="https://script.google.com/macros/s/.../exec">
+          </div>
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            <button id="btn-save-gsheet-url" class="btn btn-primary">💾 Simpan URL Web App</button>
+            <button id="btn-sync-all-gsheet" class="btn btn-secondary" style="background: #059669; color: white; border: none;">🚀 Sync Semua Data Historis ke Google Sheets</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Login Modal -->
+  <div id="login-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.7); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div style="background: white; padding: 2rem; border-radius: 12px; width: 90%; max-width: 400px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);">
+      <h2 style="margin-top: 0; color: #1e293b; margin-bottom: 0.5rem; font-size: 1.5rem;">🔒 Login Petugas</h2>
+      <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem; line-height: 1.5;">Akses aplikasi dikunci. Silakan login menggunakan kredensial kasir Anda.</p>
+      
+      <div class="form-group">
+        <label class="form-label">Email Petugas</label>
+        <input type="email" id="login-email" class="form-control" placeholder="kasir@spbu.com">
+      </div>
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label class="form-label">Password / PIN</label>
+        <input type="password" id="login-password" class="form-control" placeholder="••••••••">
+      </div>
+      
+      <div id="login-error-msg" style="display: none; color: #b91c1c; background: #fee2e2; padding: 0.75rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1.5rem; border: 1px solid #f87171; font-weight: 500;"></div>
+      
+      <button id="btn-login-submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem; font-size: 1rem; justify-content: center;">Masuk Aplikasi ➔</button>
+    </div>
+  </div>
+
+  <!-- JavaScript Modules -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="js/terbilang.js"></script>
+  <script src="js/serial-calc.js"></script>
+  <!-- Application Scripts -->
+  <script src="js/database.js?v=2"></script>
+  <script src="js/excel-export.js?v=2"></script>
+  <script src="js/dashboard.js?v=2"></script>
+  <script src="js/app.js?v=2"></script>
+
+</body>
+</html>

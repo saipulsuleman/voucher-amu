@@ -1,0 +1,94 @@
+<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+ <Worksheet ss:Name="DAFTAR INSTANSI UNIK">
+  <Table>
+   <Column ss:Width="40"/>
+   <Column ss:Width="280"/>
+   <Row ss:Height="24">
+    <Cell><Data ss:Type="String">No</Data></Cell>
+    <Cell><Data ss:Type="String">Nama Instansi / Pembeli</Data></Cell>
+   </Row>
+   <Row><Cell><Data ss:Type="Number">1</Data></Cell><Cell><Data ss:Type="String">BAPEDA</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">2</Data></Cell><Cell><Data ss:Type="String">BAPEDDA</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">3</Data></Cell><Cell><Data ss:Type="String">BAPEMDA</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">4</Data></Cell><Cell><Data ss:Type="String">BAPENDA</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">5</Data></Cell><Cell><Data ss:Type="String">BAWASLU BOALEMO</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">6</Data></Cell><Cell><Data ss:Type="String">BAWASLU KOTA</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">7</Data></Cell><Cell><Data ss:Type="String">BAWASLU POHUWATO</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">8</Data></Cell><Cell><Data ss:Type="String">BAWASLU PROPINSI</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">9</Data></Cell><Cell><Data ss:Type="String">BEA CUKAI</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">10</Data></Cell><Cell><Data ss:Type="String">BEA CUKAI (WILDAN)</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">11</Data></Cell><Cell><Data ss:Type="String">BIRO ORGANISASI</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">12</Data></Cell><Cell><Data ss:Type="String">BIRO PEMERINTAHAN</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">13</Data></Cell><Cell><Data ss:Type="String">BIRO UMUM</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">14</Data></Cell><Cell><Data ss:Type="String">BIRO UMUM LABASIR</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">15</Data></Cell><Cell><Data ss:Type="String">BKD</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">16</Data></Cell><Cell><Data ss:Type="String">BPBD PROP</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">17</Data></Cell><Cell><Data ss:Type="String">BPBD PROPINSI</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">18</Data></Cell><Cell><Data ss:Type="String">BPJS KESEHATAN</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">19</Data></Cell><Cell><Data ss:Type="String">CAMAT HULONTHALANGI</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">20</Data></Cell><Cell><Data ss:Type="String">CAMAT KOTA TENGAH</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">21</Data></Cell><Cell><Data ss:Type="String">CAMAT KOTA UTARA</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">22</Data></Cell><Cell><Data ss:Type="String">CAMAT SIPATANA</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">23</Data></Cell><Cell><Data ss:Type="String">DIKES KOTA</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">24</Data></Cell><Cell><Data ss:Type="String">DINAS KESEHATAN</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">25</Data></Cell><Cell><Data ss:Type="String">DINAS KESEHATAN KOTA</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">26</Data></Cell><Cell><Data ss:Type="String">DINAS PARIWISATA</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">27</Data></Cell><Cell><Data ss:Type="String">DINAS PENDIDIKAN</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">28</Data></Cell><Cell><Data ss:Type="String">DINAS PERHUBUNGAN</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">29</Data></Cell><Cell><Data ss:Type="String">DINAS SOSIAL</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">30</Data></Cell><Cell><Data ss:Type="String">DISNAKER</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">31</Data></Cell><Cell><Data ss:Type="String">DISPERINDAG</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">32</Data></Cell><Cell><Data ss:Type="String">DLH</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">33</Data></Cell><Cell><Data ss:Type="String">DLH PROPINSI</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">34</Data></Cell><Cell><Data ss:Type="String">GUBERNUR</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">35</Data></Cell><Cell><Data ss:Type="String">INSPEKTORAT</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">36</Data></Cell><Cell><Data ss:Type="String">ISUZU</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">37</Data></Cell><Cell><Data ss:Type="String">JNE</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">38</Data></Cell><Cell><Data ss:Type="String">KALLA BETON</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">39</Data></Cell><Cell><Data ss:Type="String">KESBANG POL</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">40</Data></Cell><Cell><Data ss:Type="String">KESRA PAK MAMAN</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">41</Data></Cell><Cell><Data ss:Type="String">KEUANGAN BOALEMO</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">42</Data></Cell><Cell><Data ss:Type="String">KEUANGAN BOALEMO GENSET</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">43</Data></Cell><Cell><Data ss:Type="String">KEUANGAN POHUWATO</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">44</Data></Cell><Cell><Data ss:Type="String">KLOTER 28</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">45</Data></Cell><Cell><Data ss:Type="String">KLOTER 30</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">46</Data></Cell><Cell><Data ss:Type="String">KOMINFO</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">47</Data></Cell><Cell><Data ss:Type="String">KPU POHUWATO</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">48</Data></Cell><Cell><Data ss:Type="String">MUDIR RAIS</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">49</Data></Cell><Cell><Data ss:Type="String">MUSEUM</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">50</Data></Cell><Cell><Data ss:Type="String">PAGUYAMAN PANTAI</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">51</Data></Cell><Cell><Data ss:Type="String">PANITIA</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">52</Data></Cell><Cell><Data ss:Type="String">PARIWISATA</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">53</Data></Cell><Cell><Data ss:Type="String">PERKIM</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">54</Data></Cell><Cell><Data ss:Type="String">PUPR</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">55</Data></Cell><Cell><Data ss:Type="String">PUPR LAB</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">56</Data></Cell><Cell><Data ss:Type="String">PUPR MAIL</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">57</Data></Cell><Cell><Data ss:Type="String">PUPR NAWIR</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">58</Data></Cell><Cell><Data ss:Type="String">PUPR SDA</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">59</Data></Cell><Cell><Data ss:Type="String">PUSKESMAS DUMBO RAYA</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">60</Data></Cell><Cell><Data ss:Type="String">PUSKESMAS DUNGGINGI</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">61</Data></Cell><Cell><Data ss:Type="String">PUSKESMAS HULONTHALANGI</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">62</Data></Cell><Cell><Data ss:Type="String">PUSKESMAS KOTA BARAT</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">63</Data></Cell><Cell><Data ss:Type="String">PUSKESMAS KOTA SELATAN</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">64</Data></Cell><Cell><Data ss:Type="String">PUSKESMAS KOTA TIMUR</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">65</Data></Cell><Cell><Data ss:Type="String">PUSKESMAS PAGUYAMAN PANTAI</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">66</Data></Cell><Cell><Data ss:Type="String">PUSKESMAS PILOLODA</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">67</Data></Cell><Cell><Data ss:Type="String">RRI</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">68</Data></Cell><Cell><Data ss:Type="String">RS OTANAHA</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">69</Data></Cell><Cell><Data ss:Type="String">SAMSAT BOALEMO</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">70</Data></Cell><Cell><Data ss:Type="String">SEKDA</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">71</Data></Cell><Cell><Data ss:Type="String">SETDA</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">72</Data></Cell><Cell><Data ss:Type="String">SPPG KOTA TIMUR TAMALATE</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">73</Data></Cell><Cell><Data ss:Type="String">STAFF BELI TUNAI</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">74</Data></Cell><Cell><Data ss:Type="String">TBBM PERTAMINA</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">75</Data></Cell><Cell><Data ss:Type="String">TELKOM</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">76</Data></Cell><Cell><Data ss:Type="String">TVRI</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">77</Data></Cell><Cell><Data ss:Type="String">TVRI GORONTALO</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">78</Data></Cell><Cell><Data ss:Type="String">WAGUB</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">79</Data></Cell><Cell><Data ss:Type="String">PERORANGAN</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="Number">80</Data></Cell><Cell><Data ss:Type="String">SWASTA</Data></Cell></Row>
+  </Table>
+ </Worksheet>
+</Workbook>

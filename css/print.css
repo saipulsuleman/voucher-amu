@@ -1,0 +1,564 @@
+/*
+ * Print.css - Strict Print Engine Styling for Nota Kupon & Kwitansi
+ * PT. Arba Mitra Usaha Gorontalo (SPBU 74-961-4)
+ */
+
+@media screen {
+  #print-mount-point {
+    display: none !important;
+  }
+  .print-document-container {
+    background: #ffffff;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    margin: 0 auto;
+  }
+  .nota-slip-preview {
+    border: 1px solid #cbd5e1;
+    margin-bottom: 1rem;
+  }
+}
+
+/* Base Print Styles */
+.print-document-container {
+  width: 210mm;
+  color: #000000;
+  font-family: Arial, Helvetica, sans-serif;
+  background-color: #ffffff;
+  position: relative;
+  box-sizing: border-box;
+}
+
+/* 1. NOTA KUPON SLIP (F4 Divided by 3: 210mm x 110mm) */
+.nota-slip {
+  width: 210mm;
+  min-height: 108mm;
+  max-height: 110mm;
+  padding: 3mm 8mm;
+  position: relative;
+  box-sizing: border-box;
+  overflow: visible;
+  background: #ffffff; /* Transparent/White background for clean printing */
+  border-bottom: 1px dashed #94a3b8;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.nota-slip:last-child {
+  border-bottom: none;
+}
+
+/* Watermark Background (Centered 12% Opacity) */
+.watermark-bg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 380px;
+  height: auto;
+  opacity: 0.12;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.nota-content {
+  position: relative;
+  z-index: 2;
+}
+
+/* Header Nota Kupon */
+.nota-header-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 2px;
+}
+
+.nota-header-table td {
+  vertical-align: middle;
+}
+
+.nota-brand-title {
+  text-align: center;
+}
+
+.nota-spbu-code {
+  font-size: 12.5px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+.nota-company-name {
+  font-size: 13.5px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.nota-no-box {
+  border: 1px solid #000;
+  padding: 2px 8px;
+  display: inline-block;
+  min-width: 60px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.nota-diserahkan {
+  font-size: 11.5px;
+  font-weight: bold;
+  margin-bottom: 2px;
+}
+
+.nota-diserahkan-name {
+  border-bottom: 1px solid #000;
+  padding-bottom: 1px;
+  display: inline-block;
+  min-width: 150px;
+}
+
+/* Main Table Nota Kupon */
+.nota-main-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10.5px;
+  margin-bottom: 2px;
+}
+
+.nota-main-table th, .nota-main-table td {
+  border: 1px solid #000;
+  padding: 2px 4px;
+  text-align: left;
+}
+
+.nota-main-table th {
+  background-color: transparent;
+  font-weight: bold;
+  text-align: center;
+  font-size: 10px;
+}
+
+.nota-total-row td {
+  font-weight: bold;
+}
+
+/* Terbilang Section */
+.nota-terbilang-box {
+  font-size: 10.5px;
+  font-weight: bold;
+  border-bottom: 1px solid #000;
+  padding-bottom: 2px;
+  margin-bottom: 3px;
+}
+
+/* Footer & Signatures (3 Column Layout) */
+.nota-footer-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10.5px;
+  margin-top: 1px;
+}
+
+.nota-footer-table td {
+  vertical-align: top;
+}
+
+/* FIAT Box */
+.fiat-box {
+  border: 1px solid #000;
+  text-align: center;
+  width: 100px;
+  margin: 0 auto;
+}
+
+.fiat-title {
+  border-bottom: 1px solid #000;
+  font-weight: bold;
+  font-size: 9.5px;
+  padding: 1px 0;
+}
+
+.fiat-cols {
+  display: flex;
+}
+
+.fiat-col {
+  flex: 1;
+  font-size: 9px;
+  font-weight: bold;
+  padding: 1px 0;
+}
+
+.fiat-col:first-child {
+  border-right: 1px solid #000;
+}
+
+/* Signature Blocks */
+.sig-block-left {
+  text-align: left;
+  width: 200px;
+}
+
+.sig-block-right {
+  text-align: center;
+  width: 220px;
+  margin-left: auto;
+}
+
+.sig-date {
+  font-size: 10.5px;
+}
+
+.sig-company {
+  font-size: 10.5px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.sig-space {
+  height: 36px; /* Clean space for wet ink stamp & signature */
+}
+
+.sig-name {
+  font-size: 10.5px;
+  font-weight: bold;
+}
+
+.sig-name-blank {
+  border-bottom: 1px dotted #000;
+  display: inline-block;
+  width: 160px;
+  height: 14px;
+  vertical-align: bottom;
+}
+
+/* --- COMPACT MODE FOR LONG TABLES --- */
+.nota-slip.nota-compact .nota-header-table { margin-bottom: 0px; }
+.nota-slip.nota-compact .nota-diserahkan { margin-bottom: 0px; font-size: 10px; }
+.nota-slip.nota-compact .nota-main-table { font-size: 9px; margin-bottom: 0px; }
+.nota-slip.nota-compact .nota-main-table th { font-size: 8.5px; }
+.nota-slip.nota-compact .nota-main-table th, .nota-slip.nota-compact .nota-main-table td { padding: 1px 2px; }
+.nota-slip.nota-compact .nota-terbilang-box { margin-bottom: 1px; padding-bottom: 1px; font-size: 9px; }
+.nota-slip.nota-compact .sig-space { height: 18px; }
+.nota-slip.nota-compact .sig-date, .nota-slip.nota-compact .sig-company, .nota-slip.nota-compact .sig-name { font-size: 9.5px; }
+
+
+/* 1b. KWITANSI SLIP (F4 3rd Section: 210mm x 110mm) */
+.kwitansi-slip {
+  width: 210mm;
+  min-height: 108mm;
+  max-height: 110mm;
+  padding: 3mm 8mm;
+  position: relative;
+  box-sizing: border-box;
+  overflow: visible;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.kwitansi-slip-content {
+  position: relative;
+  z-index: 2;
+}
+
+.kwitansi-slip-title {
+  text-align: center;
+  font-size: 13.5px;
+  font-weight: 900;
+  text-decoration: underline;
+  margin-bottom: 4px;
+  letter-spacing: 1px;
+}
+
+/* 2. KWITANSI DOKUMEN */
+.kwitansi-doc {
+  width: 210mm;
+  min-height: 155mm;
+  padding: 10mm 12mm;
+  position: relative;
+  box-sizing: border-box;
+  background: #ffffff;
+}
+
+.kwitansi-header-title {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 900;
+  text-decoration: underline;
+  margin-bottom: 16px;
+  letter-spacing: 1px;
+}
+
+.kwitansi-row {
+  display: flex;
+  margin-bottom: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.kwitansi-label {
+  width: 160px;
+  font-weight: bold;
+}
+
+.kwitansi-colon {
+  width: 15px;
+  font-weight: bold;
+}
+
+.kwitansi-value {
+  flex: 1;
+  font-weight: 600;
+}
+
+.kwitansi-terbilang-text {
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.kwitansi-breakdown-table {
+  margin-left: 0;
+  margin-top: 4px;
+  margin-bottom: 12px;
+  font-size: 12.5px;
+}
+
+.kwitansi-breakdown-row {
+  display: flex;
+  padding: 2px 0;
+}
+
+.kwitansi-nominal-box {
+  font-size: 16px;
+  font-weight: 900;
+  margin-top: 10px;
+}
+
+/* Strictly Rules for Print Mode */
+@media print {
+  @page {
+    /*
+     * EPSON L3250 Setup:
+     * 1. Di dialog cetak browser, pilih Printer: EPSON L3250
+     * 2. Ubah ukuran kertas ke: Folio / F4 (210mm x 330mm)
+     * 3. Set margin ke: None / Tanpa Margin
+     * 4. Aktifkan "Background Graphics" jika ada gambar
+     */
+    size: 210mm 330mm; /* F4 Size (210mm x 330mm) */
+    margin: 0mm;
+  }
+
+  html, body {
+    width: 210mm;
+    margin: 0;
+    padding: 0;
+    background: #ffffff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide app UI when printing */
+  .app-header, .main-wrapper, .nav-tabs, .btn, .modal-overlay, #app-ui-wrapper {
+    display: none !important;
+  }
+
+  /* Display print mount point */
+  #print-mount-point {
+    display: block !important;
+  }
+
+  .print-document-container {
+    display: block !important;
+    width: 210mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .nota-slip, .kwitansi-slip, .voucher-manual-strip {
+    page-break-inside: avoid;
+  }
+
+  .page-break {
+    page-break-after: always;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * 3. VOUCHER MANUAL STRIP (KUPON FISIK SPBU 74-961-04 PERTAMINA)
+ * ───────────────────────────────────────────────────────────────────────────── */
+.voucher-manual-strip {
+  width: 210mm;
+  padding: 4mm 6mm;
+  margin-bottom: 4mm;
+  box-sizing: border-box;
+  background: #ffffff;
+  border: 1px dashed #94a3b8;
+  font-family: Arial, Helvetica, sans-serif;
+  page-break-inside: avoid;
+}
+
+.voucher-manual-strip:last-child {
+  margin-bottom: 0;
+}
+
+.v-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  padding: 0 4px;
+}
+
+.v-header-left, .v-header-right {
+  font-size: 13.5px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.v-serial-num {
+  font-weight: 900;
+  font-size: 14.5px;
+}
+
+.v-header-center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  overflow: visible;
+  padding: 0 4px;
+}
+
+.v-header-center img {
+  height: 30px;
+  max-height: 32px;
+  width: auto;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
+}
+
+.v-body {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.v-stub {
+  flex: 1.1;
+  border: 1px solid #000000;
+  padding: 4px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: #ffffff;
+  min-height: 115px;
+  box-sizing: border-box;
+}
+
+.v-bbk-badge {
+  background-color: #56c1d6 !important;
+  color: #dc2626 !important;
+  font-weight: 900;
+  font-size: 15px;
+  letter-spacing: 4px;
+  padding: 2px 0;
+  margin-bottom: 4px;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+.v-customer-name {
+  font-size: 14.5px;
+  font-weight: 900;
+  color: #000000;
+  margin: 3px 0;
+  line-height: 1.2;
+}
+
+.v-nominal-text {
+  font-size: 17px;
+  font-weight: 900;
+  color: #000000;
+  margin: 2px 0;
+}
+
+.v-instansi-tag {
+  font-size: 12.5px;
+  font-weight: 900;
+  color: #dc2626;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.v-footer-info {
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #000000;
+}
+
+.v-center-block {
+  flex: 1.3;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 2px;
+  box-sizing: border-box;
+}
+
+.v-spbu-title {
+  font-size: 13.5px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  color: #000000;
+  margin-bottom: 6px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.v-terms-box {
+  width: 100%;
+  border: 1px solid #000000;
+  padding: 4px 6px;
+  text-align: center;
+  box-sizing: border-box;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 92px;
+}
+
+.v-terms-text {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #000000;
+  line-height: 1.25;
+  text-transform: lowercase;
+}
+
+.v-valid-header {
+  border-top: 1px solid #000000;
+  border-bottom: 1px solid #000000;
+  margin: 4px 0;
+  padding: 2px 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #000000;
+}
+
+.v-valid-date {
+  font-size: 14px;
+  font-weight: 900;
+  color: #000000;
+  padding-top: 1px;
+}
+

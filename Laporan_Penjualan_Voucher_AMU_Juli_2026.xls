@@ -1,0 +1,320 @@
+<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+ <Styles>
+  <Style ss:ID="Default" ss:Name="Normal">
+   <Alignment ss:Vertical="Bottom"/>
+   <Font ss:FontName="Calibri" ss:Size="11" ss:Color="#000000"/>
+  </Style>
+  <Style ss:ID="Title">
+   <Font ss:FontName="Calibri" ss:Size="14" ss:Bold="1" ss:Color="#E2231A"/>
+   <Alignment ss:Horizontal="Center"/>
+  </Style>
+  <Style ss:ID="Header">
+   <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/>
+   <Interior ss:Color="#E2231A" ss:Pattern="Solid"/>
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+  </Style>
+  <Style ss:ID="Currency">
+   <NumberFormat ss:Format="&#34;Rp&#34;#,##0"/>
+  </Style>
+  <Style ss:ID="Total">
+   <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1"/>
+   <Interior ss:Color="#F3F4F6" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="TotalCurrency">
+   <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1"/>
+   <Interior ss:Color="#F3F4F6" ss:Pattern="Solid"/>
+   <NumberFormat ss:Format="&#34;Rp&#34;#,##0"/>
+  </Style>
+ </Styles>
+ <Worksheet ss:Name="REKAPITULASI TOTAL">
+  <Table>
+   <Column ss:Width="70"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="160"/>
+   <Column ss:Width="140"/>
+   <Column ss:Width="140"/>
+   <Column ss:Width="130"/>
+   <Column ss:Width="80"/>
+   <Column ss:Width="110"/>
+   <Column ss:Width="100"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="120"/>
+
+   <Row ss:Height="25">
+    <Cell ss:MergeAcross="10" ss:StyleID="Title"><Data ss:Type="String">PT. ARBA MITRA USAHA GORONTALO (SPBU 74-961-4)</Data></Cell>
+   </Row>
+   <Row ss:Height="20">
+    <Cell ss:MergeAcross="10" ss:StyleID="Title"><Data ss:Type="String">REKAPITULASI PENJUALAN VOUCHER - Juli_2026</Data></Cell>
+   </Row>
+   <Row/>
+
+   <Row ss:Height="24">
+    <Cell ss:StyleID="Header"><Data ss:Type="String">No. Nota</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Tanggal</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Nama Instansi</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Petugas / TTD</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Rincian Voucher</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Rentang Seri</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Total Lembar</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Subtotal Nominal</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Biaya Cetak</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Clearing</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Grand Total</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="String">0033</Data></Cell>
+    <Cell><Data ss:Type="String">2026-07-23</Data></Cell>
+    <Cell><Data ss:Type="String">BEA CUKAI</Data></Cell>
+    <Cell><Data ss:Type="String">Ady Praditya</Data></Cell>
+    <Cell><Data ss:Type="String">100 Lbr (V200)</Data></Cell>
+    <Cell><Data ss:Type="String">200101-200200</Data></Cell>
+    <Cell><Data ss:Type="Number">100</Data></Cell>
+    <Cell ss:StyleID="Currency"><Data ss:Type="Number">20000000</Data></Cell>
+    <Cell ss:StyleID="Currency"><Data ss:Type="Number">50000</Data></Cell>
+    <Cell ss:StyleID="Currency"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="Currency"><Data ss:Type="Number">20050000</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="String">0034</Data></Cell>
+    <Cell><Data ss:Type="String">2026-07-26</Data></Cell>
+    <Cell><Data ss:Type="String">MUSEUM</Data></Cell>
+    <Cell><Data ss:Type="String">Saipul Karim Suleman</Data></Cell>
+    <Cell><Data ss:Type="String">40 Lbr (V50)</Data></Cell>
+    <Cell><Data ss:Type="String">147801-147840</Data></Cell>
+    <Cell><Data ss:Type="Number">40</Data></Cell>
+    <Cell ss:StyleID="Currency"><Data ss:Type="Number">2000000</Data></Cell>
+    <Cell ss:StyleID="Currency"><Data ss:Type="Number">20000</Data></Cell>
+    <Cell ss:StyleID="Currency"><Data ss:Type="Number">6500</Data></Cell>
+    <Cell ss:StyleID="Currency"><Data ss:Type="Number">2026500</Data></Cell>
+   </Row>
+   <Row ss:Height="22">
+    <Cell ss:MergeAcross="5" ss:StyleID="Total"><Data ss:Type="String">TOTAL KESELURUHAN</Data></Cell>
+    <Cell ss:StyleID="Total"><Data ss:Type="Number">140</Data></Cell>
+    <Cell ss:StyleID="TotalCurrency"><Data ss:Type="Number">22000000</Data></Cell>
+    <Cell ss:StyleID="TotalCurrency"><Data ss:Type="Number">70000</Data></Cell>
+    <Cell ss:StyleID="TotalCurrency"><Data ss:Type="Number">6500</Data></Cell>
+    <Cell ss:StyleID="TotalCurrency"><Data ss:Type="Number">22076500</Data></Cell>
+   </Row>
+  </Table>
+ </Worksheet>
+ <Worksheet ss:Name="V50 (Rp 50.000)">
+  <Table>
+   <Column ss:Width="70"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="160"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="80"/>
+   <Column ss:Width="120"/>
+   <Column ss:Width="100"/>
+   <Column ss:Width="140"/>
+
+   <Row ss:Height="24">
+    <Cell ss:StyleID="Header"><Data ss:Type="String">No. Nota</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Tanggal</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Nama Instansi</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Seri Awal</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Seri Akhir</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Lembar</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Subtotal Nominal</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Biaya Cetak</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Petugas / TTD</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="String">0034</Data></Cell>
+    <Cell><Data ss:Type="String">2026-07-26</Data></Cell>
+    <Cell><Data ss:Type="String">MUSEUM</Data></Cell>
+    <Cell><Data ss:Type="String">147801</Data></Cell>
+    <Cell><Data ss:Type="String">147840</Data></Cell>
+    <Cell><Data ss:Type="Number">40</Data></Cell>
+    <Cell ss:StyleID="Currency"><Data ss:Type="Number">2000000</Data></Cell>
+    <Cell ss:StyleID="Currency"><Data ss:Type="Number">20000</Data></Cell>
+    <Cell><Data ss:Type="String">Saipul Karim Suleman</Data></Cell>
+   </Row>
+   <Row ss:Height="22">
+    <Cell ss:MergeAcross="4" ss:StyleID="Total"><Data ss:Type="String">TOTAL PECAHAN V50 (Rp 50.000)</Data></Cell>
+    <Cell ss:StyleID="Total"><Data ss:Type="Number">40</Data></Cell>
+    <Cell ss:StyleID="TotalCurrency"><Data ss:Type="Number">2000000</Data></Cell>
+    <Cell ss:StyleID="TotalCurrency"><Data ss:Type="Number">20000</Data></Cell>
+    <Cell ss:StyleID="Total"></Cell>
+   </Row>
+  </Table>
+ </Worksheet>
+ <Worksheet ss:Name="V100 (Rp 100.000)">
+  <Table>
+   <Column ss:Width="70"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="160"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="80"/>
+   <Column ss:Width="120"/>
+   <Column ss:Width="100"/>
+   <Column ss:Width="140"/>
+
+   <Row ss:Height="24">
+    <Cell ss:StyleID="Header"><Data ss:Type="String">No. Nota</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Tanggal</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Nama Instansi</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Seri Awal</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Seri Akhir</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Lembar</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Subtotal Nominal</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Biaya Cetak</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Petugas / TTD</Data></Cell>
+   </Row>
+   <Row ss:Height="22">
+    <Cell ss:MergeAcross="4" ss:StyleID="Total"><Data ss:Type="String">TOTAL PECAHAN V100 (Rp 100.000)</Data></Cell>
+    <Cell ss:StyleID="Total"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="TotalCurrency"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="TotalCurrency"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="Total"></Cell>
+   </Row>
+  </Table>
+ </Worksheet>
+ <Worksheet ss:Name="V200 (Rp 200.000)">
+  <Table>
+   <Column ss:Width="70"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="160"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="80"/>
+   <Column ss:Width="120"/>
+   <Column ss:Width="100"/>
+   <Column ss:Width="140"/>
+
+   <Row ss:Height="24">
+    <Cell ss:StyleID="Header"><Data ss:Type="String">No. Nota</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Tanggal</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Nama Instansi</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Seri Awal</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Seri Akhir</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Lembar</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Subtotal Nominal</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Biaya Cetak</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Petugas / TTD</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="String">0033</Data></Cell>
+    <Cell><Data ss:Type="String">2026-07-23</Data></Cell>
+    <Cell><Data ss:Type="String">BEA CUKAI</Data></Cell>
+    <Cell><Data ss:Type="String">200101</Data></Cell>
+    <Cell><Data ss:Type="String">200200</Data></Cell>
+    <Cell><Data ss:Type="Number">100</Data></Cell>
+    <Cell ss:StyleID="Currency"><Data ss:Type="Number">20000000</Data></Cell>
+    <Cell ss:StyleID="Currency"><Data ss:Type="Number">50000</Data></Cell>
+    <Cell><Data ss:Type="String">Ady Praditya</Data></Cell>
+   </Row>
+   <Row ss:Height="22">
+    <Cell ss:MergeAcross="4" ss:StyleID="Total"><Data ss:Type="String">TOTAL PECAHAN V200 (Rp 200.000)</Data></Cell>
+    <Cell ss:StyleID="Total"><Data ss:Type="Number">100</Data></Cell>
+    <Cell ss:StyleID="TotalCurrency"><Data ss:Type="Number">20000000</Data></Cell>
+    <Cell ss:StyleID="TotalCurrency"><Data ss:Type="Number">50000</Data></Cell>
+    <Cell ss:StyleID="Total"></Cell>
+   </Row>
+  </Table>
+ </Worksheet>
+ <Worksheet ss:Name="V300 (Rp 300.000)">
+  <Table>
+   <Column ss:Width="70"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="160"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="80"/>
+   <Column ss:Width="120"/>
+   <Column ss:Width="100"/>
+   <Column ss:Width="140"/>
+
+   <Row ss:Height="24">
+    <Cell ss:StyleID="Header"><Data ss:Type="String">No. Nota</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Tanggal</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Nama Instansi</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Seri Awal</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Seri Akhir</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Lembar</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Subtotal Nominal</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Biaya Cetak</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Petugas / TTD</Data></Cell>
+   </Row>
+   <Row ss:Height="22">
+    <Cell ss:MergeAcross="4" ss:StyleID="Total"><Data ss:Type="String">TOTAL PECAHAN V300 (Rp 300.000)</Data></Cell>
+    <Cell ss:StyleID="Total"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="TotalCurrency"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="TotalCurrency"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="Total"></Cell>
+   </Row>
+  </Table>
+ </Worksheet>
+ <Worksheet ss:Name="V25 (Rp 25.000)">
+  <Table>
+   <Column ss:Width="70"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="160"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="80"/>
+   <Column ss:Width="120"/>
+   <Column ss:Width="100"/>
+   <Column ss:Width="140"/>
+
+   <Row ss:Height="24">
+    <Cell ss:StyleID="Header"><Data ss:Type="String">No. Nota</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Tanggal</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Nama Instansi</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Seri Awal</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Seri Akhir</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Lembar</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Subtotal Nominal</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Biaya Cetak</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Petugas / TTD</Data></Cell>
+   </Row>
+   <Row ss:Height="22">
+    <Cell ss:MergeAcross="4" ss:StyleID="Total"><Data ss:Type="String">TOTAL PECAHAN V25 (Rp 25.000)</Data></Cell>
+    <Cell ss:StyleID="Total"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="TotalCurrency"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="TotalCurrency"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="Total"></Cell>
+   </Row>
+  </Table>
+ </Worksheet>
+ <Worksheet ss:Name="VOUCHER MANUAL">
+  <Table>
+   <Column ss:Width="70"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="160"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="80"/>
+   <Column ss:Width="120"/>
+   <Column ss:Width="100"/>
+   <Column ss:Width="140"/>
+
+   <Row ss:Height="24">
+    <Cell ss:StyleID="Header"><Data ss:Type="String">No. Nota</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Tanggal</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Nama Instansi</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Seri Awal</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Seri Akhir</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Lembar</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Subtotal Nominal</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Biaya Cetak</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Petugas / TTD</Data></Cell>
+   </Row>
+   <Row ss:Height="22">
+    <Cell ss:MergeAcross="4" ss:StyleID="Total"><Data ss:Type="String">TOTAL PECAHAN VOUCHER MANUAL</Data></Cell>
+    <Cell ss:StyleID="Total"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="TotalCurrency"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="TotalCurrency"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="Total"></Cell>
+   </Row>
+  </Table>
+ </Worksheet>
+</Workbook>
