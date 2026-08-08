@@ -1174,73 +1174,58 @@ const DB = {
 
 
 
-      // DEFINITIVE SOLUTION: Hidden iframe form POST
-      // fetch() CANNOT reliably reach Google Apps Script due to CORS + 302 redirect.
-      // Form submissions are EXEMPT from CORS by design — they always work cross-origin.
-      // Google Apps Script receives form fields via e.parameter (e.parameter.payload).
-      // The script processes data BEFORE returning any response/redirect.
+      // BULLETPROOF DUAL-DELIVERY TO GOOGLE APPS SCRIPT
+      // Delivery 1: Direct fetch POST with text/plain (CORS safelisted, payload in e.postData.contents)
       let syncSuccess = false;
-      
-      const sendViaForm = (payloadData) => {
-        return new Promise((resolve) => {
-          const jsonStr = JSON.stringify(payloadData);
-          const iframeName = 'gsheet_sync_' + Date.now();
-          
-          // Create hidden iframe to receive the form response
-          const iframe = document.createElement('iframe');
-          iframe.name = iframeName;
-          iframe.style.display = 'none';
-          document.body.appendChild(iframe);
-          
-          // Create form targeting the iframe
-          const form = document.createElement('form');
-          form.method = 'POST';
-          form.action = webhookUrl;
-          form.target = iframeName;
-          form.style.display = 'none';
-          
-          // Add payload as form field — Apps Script reads via e.parameter.payload
-          const input = document.createElement('input');
-          input.type = 'hidden';
-          input.name = 'payload';
-          input.value = jsonStr;
-          form.appendChild(input);
-          
-          document.body.appendChild(form);
-          
-          let resolved = false;
-          const cleanup = () => {
-            if (!resolved) {
-              resolved = true;
-              try { document.body.removeChild(iframe); } catch(e) {}
-              try { document.body.removeChild(form); } catch(e) {}
-              resolve(true);
-            }
-          };
-          
-          // iframe onload fires when Apps Script response (or redirect) loads
-          iframe.onload = cleanup;
-          // Timeout fallback — even if iframe fails to load, data was already sent
-          setTimeout(cleanup, 8000);
-          
-          // Submit the form
-          form.submit();
-        });
+      const payloadObj = {
+        action: 'upsert',
+        tx_id: tx.id || '',
+        rows: payloadRows
       };
-      
+      const jsonStr = JSON.stringify(payloadObj);
+
       try {
-        const fullPayload = {
-          action: 'upsert',
-          tx_id: tx.id || '',
-          rows: payloadRows
-        };
-        await sendViaForm(fullPayload);
+        await fetch(webhookUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: jsonStr
+        });
         syncSuccess = true;
-      } catch (formErr) {
-        console.warn('Google Sheets form submit error:', formErr.message);
-        syncSuccess = false;
+      } catch (err) {
+        console.warn('Fetch sync notice:', err);
       }
-      
+
+      // Delivery 2: Hidden Form POST (Payload in e.parameter.payload)
+      try {
+        const iframeName = 'gsheet_sync_' + Date.now();
+        const iframe = document.createElement('iframe');
+        iframe.name = iframeName;
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = webhookUrl;
+        form.target = iframeName;
+        form.style.display = 'none';
+
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'payload';
+        input.value = jsonStr;
+        form.appendChild(input);
+        document.body.appendChild(form);
+
+        form.submit();
+        setTimeout(() => {
+          try { document.body.removeChild(iframe); } catch(e) {}
+          try { document.body.removeChild(form); } catch(e) {}
+        }, 3000);
+      } catch(formErr) {
+        console.warn('Form submit notice:', formErr);
+      }
+
       if (syncSuccess) {
         this.markGSheetsItemSynced(signaturesToMark);
       }

@@ -596,6 +596,10 @@ const App = {
     });
 
     document.getElementById('btn-sync-all-gsheet')?.addEventListener('click', async () => {
+      const inputUrl = document.getElementById('input-gsheet-url')?.value.trim();
+      if (inputUrl) {
+        DB.setGoogleSheetsUrl(inputUrl);
+      }
       const btn = document.getElementById('btn-sync-all-gsheet');
       const origText = btn.innerHTML;
       btn.disabled = true;
