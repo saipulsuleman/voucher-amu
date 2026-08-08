@@ -571,7 +571,12 @@ const App = {
     const yyyy = today.getFullYear();
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const dd = String(today.getDate()).padStart(2, '0');
-    document.getElementById('input-date').value = `${yyyy}-${mm}-${dd}`;
+    const todayStr = `${yyyy}-${mm}-${dd}`;
+    const dateInput = document.getElementById('input-date');
+    if (dateInput) {
+      dateInput.value = todayStr;
+      dateInput.setAttribute('max', todayStr);
+    }
 
     document.getElementById('input-customer').value = 'BEA CUKAI';
     document.getElementById('select-officer').value = 'Saipul Karim Suleman';
@@ -1624,6 +1629,17 @@ const App = {
     const customer = (document.getElementById('input-customer').value || 'BEA CUKAI').toUpperCase();
     const officer = document.getElementById('select-officer').value || 'Saipul Karim Suleman';
     const dateStr = document.getElementById('input-date').value;
+
+    // Validate that date is not in the future
+    const inputDateObj = new Date(dateStr);
+    const currentDateObj = new Date();
+    // Set time to 0 to only compare dates
+    inputDateObj.setHours(0,0,0,0);
+    currentDateObj.setHours(0,0,0,0);
+    if (inputDateObj > currentDateObj) {
+      alert('Gagal Menyimpan: Tanggal transaksi tidak boleh lebih dari hari ini!');
+      return null;
+    }
 
     if (this.rows.length === 0) {
       alert('Masukkan minimal 1 pecahan voucher!');
