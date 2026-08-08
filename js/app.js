@@ -178,9 +178,7 @@ const App = {
       this.cancelEdit();
     });
 
-    document.getElementById('btn-next-nota')?.addEventListener('click', () => {
-      this.cancelEdit();
-    });
+    // btn-next-nota is now handled by event delegation
 
     // Navigation Tabs
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -1110,7 +1108,7 @@ const App = {
   getValidUntilFormatted(dateStr) {
     const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
     const d = dateStr ? new Date(dateStr) : new Date();
-    if (isNaN(d.getTime())) return '31 Agustus 2026';
+    if (isNaN(d.getTime())) return `31 Agustus ${new Date().getFullYear()}`;
     const currentMonth = d.getMonth();
     d.setMonth(currentMonth + 1);
     if (d.getMonth() > (currentMonth + 1) % 12) {
@@ -1122,7 +1120,10 @@ const App = {
   getPrintedMonthYear(dateStr) {
     const months = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
     const d = dateStr ? new Date(dateStr) : new Date();
-    if (isNaN(d.getTime())) return 'JULI 2026';
+    if (isNaN(d.getTime())) {
+      const today = new Date();
+      return `${months[today.getMonth()]} ${today.getFullYear()}`;
+    }
     return `${months[d.getMonth()]} ${d.getFullYear()}`;
   },
 
@@ -1215,10 +1216,12 @@ const App = {
   },
 
   formatGorontaloDate(dateStr) {
-    if (!dateStr) return 'Gorontalo, 26 Juli 2026';
     const months = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return 'Gorontalo, 26 Juli 2026';
+    const d = dateStr ? new Date(dateStr) : new Date();
+    if (isNaN(d.getTime())) {
+      const today = new Date();
+      return `Gorontalo, ${today.getDate()} ${months[today.getMonth()]} ${today.getFullYear()}`;
+    }
     return `Gorontalo, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
   },
 
@@ -2636,6 +2639,15 @@ const App = {
       }
 
       ExcelExport.exportToExcel(filtered, periodTitle, { mode: 'accounting_only' });
+    });
+
+    // Event Delegation for dynamically rendered elements like btn-next-nota
+    document.body.addEventListener('click', (e) => {
+      // Find the closest button that might have the ID we want, in case a child element was clicked
+      const targetBtn = e.target.closest('#btn-next-nota');
+      if (targetBtn) {
+        this.cancelEdit();
+      }
     });
   }
 };
