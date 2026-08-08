@@ -254,6 +254,18 @@ const ExcelExport = {
    <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
    <NumberFormat ss:Format="&#34;Rp&#34;#,##0"/>
   </Style>
+  <Style ss:ID="KopCompany">
+   <Font ss:FontName="Calibri" ss:Size="14" ss:Bold="1" ss:Color="#E2231A"/>
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+  </Style>
+  <Style ss:ID="KopTitle">
+   <Font ss:FontName="Calibri" ss:Size="12" ss:Bold="1" ss:Color="#1E293B"/>
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+  </Style>
+  <Style ss:ID="KopSubTitle">
+   <Font ss:FontName="Calibri" ss:Size="10" ss:Italic="1" ss:Color="#64748B"/>
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+  </Style>
  </Styles>
 `;
 
@@ -314,6 +326,20 @@ const ExcelExport = {
    <Column ss:Width="90"/>  <!-- O: Biaya Clearing -->
    <Column ss:Width="110"/> <!-- P: Total -->
    <Column ss:Width="140"/> <!-- Q: Petugas / TTD -->
+
+   <!-- Kop Surat Perusahaan -->
+   <Row ss:Height="24">
+    <Cell ss:MergeAcross="16" ss:StyleID="KopCompany"><Data ss:Type="String">PT. ARBA MITRA USAHA GORONTALO (SPBU 74-961-4)</Data></Cell>
+   </Row>
+   <Row ss:Height="20">
+    <Cell ss:MergeAcross="16" ss:StyleID="KopTitle"><Data ss:Type="String">LAPORAN PENJUALAN VOUCHER - ${sheetName.toUpperCase()}${titleSuffix ? ' (' + titleSuffix + ')' : ''}</Data></Cell>
+   </Row>
+   <Row ss:Height="18">
+    <Cell ss:MergeAcross="16" ss:StyleID="KopSubTitle"><Data ss:Type="String">Sistem Otomasi Voucher &amp; Nota Kwitansi | Periode: ${titleSuffix || 'Semua Periode'}</Data></Cell>
+   </Row>
+
+   <!-- Baris Kosong (Skip 1 Row) -->
+   <Row ss:Height="14"/>
 
    <!-- Header Row (Red, White Bold Text) -->
    <Row ss:Height="28">
@@ -395,9 +421,20 @@ const ExcelExport = {
   <Table>
    <Column ss:Width="250"/>
    <Column ss:Width="150"/>
-   <Row ss:Height="25">
-    <Cell ss:MergeAcross="1" ss:StyleID="Title"><Data ss:Type="String">LAPORAN LABA RUGI - ${titleSuffix}</Data></Cell>
+   <!-- Kop Surat Perusahaan -->
+   <Row ss:Height="24">
+    <Cell ss:MergeAcross="1" ss:StyleID="KopCompany"><Data ss:Type="String">PT. ARBA MITRA USAHA GORONTALO (SPBU 74-961-4)</Data></Cell>
    </Row>
+   <Row ss:Height="20">
+    <Cell ss:MergeAcross="1" ss:StyleID="KopTitle"><Data ss:Type="String">LAPORAN LABA RUGI - ${titleSuffix}</Data></Cell>
+   </Row>
+   <Row ss:Height="18">
+    <Cell ss:MergeAcross="1" ss:StyleID="KopSubTitle"><Data ss:Type="String">Sistem Otomasi Voucher &amp; Nota Kwitansi | Periode: ${titleSuffix || 'Semua Periode'}</Data></Cell>
+   </Row>
+
+   <!-- Baris Kosong (Skip 1 Row) -->
+   <Row ss:Height="14"/>
+
    <Row ss:Height="20">
     <Cell ss:StyleID="Header"><Data ss:Type="String">Keterangan</Data></Cell>
     <Cell ss:StyleID="Header"><Data ss:Type="String">Nominal (Rp)</Data></Cell>
@@ -468,9 +505,20 @@ const ExcelExport = {
   <Table>
    <Column ss:Width="250"/>
    <Column ss:Width="150"/>
-   <Row ss:Height="25">
-    <Cell ss:MergeAcross="1" ss:StyleID="Title"><Data ss:Type="String">REKAPITULASI ARUS KAS - ${titleSuffix}</Data></Cell>
+   <!-- Kop Surat Perusahaan -->
+   <Row ss:Height="24">
+    <Cell ss:MergeAcross="1" ss:StyleID="KopCompany"><Data ss:Type="String">PT. ARBA MITRA USAHA GORONTALO (SPBU 74-961-4)</Data></Cell>
    </Row>
+   <Row ss:Height="20">
+    <Cell ss:MergeAcross="1" ss:StyleID="KopTitle"><Data ss:Type="String">REKAPITULASI ARUS KAS - ${titleSuffix}</Data></Cell>
+   </Row>
+   <Row ss:Height="18">
+    <Cell ss:MergeAcross="1" ss:StyleID="KopSubTitle"><Data ss:Type="String">Sistem Otomasi Voucher &amp; Nota Kwitansi | Periode: ${titleSuffix || 'Semua Periode'}</Data></Cell>
+   </Row>
+
+   <!-- Baris Kosong (Skip 1 Row) -->
+   <Row ss:Height="14"/>
+
    <Row ss:Height="20">
     <Cell ss:StyleID="Header"><Data ss:Type="String">Metode Pembayaran</Data></Cell>
     <Cell ss:StyleID="Header"><Data ss:Type="String">Total Penerimaan (Rp)</Data></Cell>
@@ -519,9 +567,20 @@ const ExcelExport = {
    <Column ss:Width="250"/>
    <Column ss:Width="120"/>
    <Column ss:Width="120"/>
-   <Row ss:Height="25">
-    <Cell ss:MergeAcross="5" ss:StyleID="Title"><Data ss:Type="String">JURNAL UMUM - ${titleSuffix}</Data></Cell>
+   <!-- Kop Surat Perusahaan -->
+   <Row ss:Height="24">
+    <Cell ss:MergeAcross="5" ss:StyleID="KopCompany"><Data ss:Type="String">PT. ARBA MITRA USAHA GORONTALO (SPBU 74-961-4)</Data></Cell>
    </Row>
+   <Row ss:Height="20">
+    <Cell ss:MergeAcross="5" ss:StyleID="KopTitle"><Data ss:Type="String">JURNAL UMUM AKUNTANSI - ${titleSuffix}</Data></Cell>
+   </Row>
+   <Row ss:Height="18">
+    <Cell ss:MergeAcross="5" ss:StyleID="KopSubTitle"><Data ss:Type="String">Sistem Otomasi Voucher &amp; Nota Kwitansi | Periode: ${titleSuffix || 'Semua Periode'}</Data></Cell>
+   </Row>
+
+   <!-- Baris Kosong (Skip 1 Row) -->
+   <Row ss:Height="14"/>
+
    <Row ss:Height="20">
     <Cell ss:StyleID="Header"><Data ss:Type="String">Tanggal</Data></Cell>
     <Cell ss:StyleID="Header"><Data ss:Type="String">No. Bukti / Nota</Data></Cell>
@@ -633,9 +692,20 @@ const ExcelExport = {
    <Column ss:Width="120"/>
    <Column ss:Width="120"/>
    <Column ss:Width="120"/>
-   <Row ss:Height="25">
-    <Cell ss:MergeAcross="5" ss:StyleID="Title"><Data ss:Type="String">BUKU BESAR (GENERAL LEDGER) - ${titleSuffix}</Data></Cell>
+   <!-- Kop Surat Perusahaan -->
+   <Row ss:Height="24">
+    <Cell ss:MergeAcross="5" ss:StyleID="KopCompany"><Data ss:Type="String">PT. ARBA MITRA USAHA GORONTALO (SPBU 74-961-4)</Data></Cell>
    </Row>
+   <Row ss:Height="20">
+    <Cell ss:MergeAcross="5" ss:StyleID="KopTitle"><Data ss:Type="String">BUKU BESAR (GENERAL LEDGER) - ${titleSuffix}</Data></Cell>
+   </Row>
+   <Row ss:Height="18">
+    <Cell ss:MergeAcross="5" ss:StyleID="KopSubTitle"><Data ss:Type="String">Sistem Otomasi Voucher &amp; Nota Kwitansi | Periode: ${titleSuffix || 'Semua Periode'}</Data></Cell>
+   </Row>
+
+   <!-- Baris Kosong (Skip 1 Row) -->
+   <Row ss:Height="14"/>
+
    <Row ss:Height="20">
     <Cell ss:StyleID="Header"><Data ss:Type="String">Tanggal</Data></Cell>
     <Cell ss:StyleID="Header"><Data ss:Type="String">No. Bukti / Nota</Data></Cell>
@@ -722,9 +792,20 @@ const ExcelExport = {
    <Column ss:Width="250"/>
    <Column ss:Width="150"/>
    <Column ss:Width="150"/>
-   <Row ss:Height="25">
-    <Cell ss:MergeAcross="3" ss:StyleID="Title"><Data ss:Type="String">NERACA SALDO (TRIAL BALANCE) - ${titleSuffix}</Data></Cell>
+   <!-- Kop Surat Perusahaan -->
+   <Row ss:Height="24">
+    <Cell ss:MergeAcross="3" ss:StyleID="KopCompany"><Data ss:Type="String">PT. ARBA MITRA USAHA GORONTALO (SPBU 74-961-4)</Data></Cell>
    </Row>
+   <Row ss:Height="20">
+    <Cell ss:MergeAcross="3" ss:StyleID="KopTitle"><Data ss:Type="String">NERACA SALDO (TRIAL BALANCE) - ${titleSuffix}</Data></Cell>
+   </Row>
+   <Row ss:Height="18">
+    <Cell ss:MergeAcross="3" ss:StyleID="KopSubTitle"><Data ss:Type="String">Sistem Otomasi Voucher &amp; Nota Kwitansi | Periode: ${titleSuffix || 'Semua Periode'}</Data></Cell>
+   </Row>
+
+   <!-- Baris Kosong (Skip 1 Row) -->
+   <Row ss:Height="14"/>
+
    <Row ss:Height="20">
     <Cell ss:StyleID="Header"><Data ss:Type="String">Kode Akun</Data></Cell>
     <Cell ss:StyleID="Header"><Data ss:Type="String">Nama Akun</Data></Cell>
@@ -797,9 +878,20 @@ const ExcelExport = {
    <Column ss:Width="150"/>
    <Column ss:Width="150"/>
    <Column ss:Width="250"/>
-   <Row ss:Height="25">
-    <Cell ss:MergeAcross="3" ss:StyleID="Title"><Data ss:Type="String">AUDIT GAP SERIAL VOUCHER - ${titleSuffix}</Data></Cell>
+   <!-- Kop Surat Perusahaan -->
+   <Row ss:Height="24">
+    <Cell ss:MergeAcross="3" ss:StyleID="KopCompany"><Data ss:Type="String">PT. ARBA MITRA USAHA GORONTALO (SPBU 74-961-4)</Data></Cell>
    </Row>
+   <Row ss:Height="20">
+    <Cell ss:MergeAcross="3" ss:StyleID="KopTitle"><Data ss:Type="String">AUDIT GAP SERIAL VOUCHER - ${titleSuffix}</Data></Cell>
+   </Row>
+   <Row ss:Height="18">
+    <Cell ss:MergeAcross="3" ss:StyleID="KopSubTitle"><Data ss:Type="String">Sistem Otomasi Voucher &amp; Nota Kwitansi | Periode: ${titleSuffix || 'Semua Periode'}</Data></Cell>
+   </Row>
+
+   <!-- Baris Kosong (Skip 1 Row) -->
+   <Row ss:Height="14"/>
+
    <Row ss:Height="20">
     <Cell ss:StyleID="Header"><Data ss:Type="String">Bulan/Tahun</Data></Cell>
     <Cell ss:StyleID="Header"><Data ss:Type="String">No Seri Bolong</Data></Cell>
@@ -807,8 +899,8 @@ const ExcelExport = {
     <Cell ss:StyleID="Header"><Data ss:Type="String">Keterangan</Data></Cell>
    </Row>`;
 
-    // Untuk Audit Gap Serial, kita kumpulkan semua serial yang terjual per pecahan
-    const serialsPerCode = {};
+    // Untuk Audit Gap Serial, kita kumpulkan semua serial yang terjual per pecahan dan per kelompok cetakan (batch)
+    const serialsPerCodeAndBatch = {};
     
     rows.forEach(r => {
       if (!r.startSerial || !r.endSerial) return;
@@ -819,35 +911,43 @@ const ExcelExport = {
       const code = r.voucherLabel; // e.g. "Voucher 25k"
       if (!startNum || !endNum) return;
       
-      if (!serialsPerCode[code]) serialsPerCode[code] = [];
+      // Tentukan kelompok cetakan (batch):
+      // Batch 0: Cetakan lama mendekati 100.000 (>= 99000 dan <= 100000)
+      // Batch 1: Cetakan baru hasil reset/pencetakan ulang (< 99000)
+      const batchGroup = (startNum >= 99000 || endNum >= 99000) ? 0 : 1;
+      
+      if (!serialsPerCodeAndBatch[code]) serialsPerCodeAndBatch[code] = {};
+      if (!serialsPerCodeAndBatch[code][batchGroup]) serialsPerCodeAndBatch[code][batchGroup] = [];
       
       for(let i = startNum; i <= endNum; i++) {
-        serialsPerCode[code].push({ num: i, prefix, date: r.monthName + ' ' + r.yearStr });
+        serialsPerCodeAndBatch[code][batchGroup].push({ num: i, prefix, date: r.monthName + ' ' + r.yearStr });
       }
     });
 
     let hasGap = false;
-    for (const [code, list] of Object.entries(serialsPerCode)) {
-      // Sort by number
-      list.sort((a,b) => a.num - b.num);
-      
-      for(let i = 0; i < list.length - 1; i++) {
-        const current = list[i];
-        const next = list[i+1];
-        if (next.num > current.num + 1) {
-           hasGap = true;
-           // Found a gap
-           const gapStart = current.num + 1;
-           const gapEnd = next.num - 1;
-           const gapDesc = gapStart === gapEnd ? `${current.prefix}${gapStart}` : `${current.prefix}${gapStart} s/d ${current.prefix}${gapEnd}`;
-           const count = gapEnd - gapStart + 1;
-           ws += `
+    for (const [code, batches] of Object.entries(serialsPerCodeAndBatch)) {
+      for (const [batchId, list] of Object.entries(batches)) {
+        // Sort by number within the same batch
+        list.sort((a,b) => a.num - b.num);
+        
+        for(let i = 0; i < list.length - 1; i++) {
+          const current = list[i];
+          const next = list[i+1];
+          if (next.num > current.num + 1) {
+             hasGap = true;
+             // Found a gap
+             const gapStart = current.num + 1;
+             const gapEnd = next.num - 1;
+             const gapDesc = gapStart === gapEnd ? `${current.prefix}${gapStart}` : `${current.prefix}${gapStart} s/d ${current.prefix}${gapEnd}`;
+             const count = gapEnd - gapStart + 1;
+             ws += `
    <Row>
     <Cell ss:StyleID="CellText"><Data ss:Type="String">${current.date}</Data></Cell>
     <Cell ss:StyleID="CellText"><Data ss:Type="String">${gapDesc}</Data></Cell>
     <Cell ss:StyleID="CellText"><Data ss:Type="String">${code}</Data></Cell>
     <Cell ss:StyleID="CellText"><Data ss:Type="String">Indikasi bolong ${count} lembar</Data></Cell>
    </Row>`;
+          }
         }
       }
     }

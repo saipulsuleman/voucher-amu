@@ -276,8 +276,8 @@ const newFunctions = `
     <Cell ss:StyleID="Header"><Data ss:Type="String">Keterangan</Data></Cell>
    </Row>\`;
 
-    // Untuk Audit Gap Serial, kita kumpulkan semua serial yang terjual per pecahan
-    const serialsPerCode = {};
+    // Untuk Audit Gap Serial, kita kumpulkan semua serial yang terjual per pecahan dan per kelompok cetakan (batch)
+    const serialsPerCodeAndBatch = {};
     
     rows.forEach(r => {
       if (!r.startSerial || !r.endSerial) return;
@@ -288,35 +288,43 @@ const newFunctions = `
       const code = r.voucherLabel; // e.g. "Voucher 25k"
       if (!startNum || !endNum) return;
       
-      if (!serialsPerCode[code]) serialsPerCode[code] = [];
+      // Tentukan kelompok cetakan (batch):
+      // Batch 0: Cetakan lama mendekati 100.000 (>= 99000 dan <= 100000)
+      // Batch 1: Cetakan baru hasil reset/pencetakan ulang (< 99000)
+      const batchGroup = (startNum >= 99000 || endNum >= 99000) ? 0 : 1;
+      
+      if (!serialsPerCodeAndBatch[code]) serialsPerCodeAndBatch[code] = {};
+      if (!serialsPerCodeAndBatch[code][batchGroup]) serialsPerCodeAndBatch[code][batchGroup] = [];
       
       for(let i = startNum; i <= endNum; i++) {
-        serialsPerCode[code].push({ num: i, prefix, date: r.monthName + ' ' + r.yearStr });
+        serialsPerCodeAndBatch[code][batchGroup].push({ num: i, prefix, date: r.monthName + ' ' + r.yearStr });
       }
     });
 
     let hasGap = false;
-    for (const [code, list] of Object.entries(serialsPerCode)) {
-      // Sort by number
-      list.sort((a,b) => a.num - b.num);
-      
-      for(let i = 0; i < list.length - 1; i++) {
-        const current = list[i];
-        const next = list[i+1];
-        if (next.num > current.num + 1) {
-           hasGap = true;
-           // Found a gap
-           const gapStart = current.num + 1;
-           const gapEnd = next.num - 1;
-           const gapDesc = gapStart === gapEnd ? \`\${current.prefix}\${gapStart}\` : \`\${current.prefix}\${gapStart} s/d \${current.prefix}\${gapEnd}\`;
-           const count = gapEnd - gapStart + 1;
-           ws += \`
+    for (const [code, batches] of Object.entries(serialsPerCodeAndBatch)) {
+      for (const [batchId, list] of Object.entries(batches)) {
+        // Sort by number within the same batch
+        list.sort((a,b) => a.num - b.num);
+        
+        for(let i = 0; i < list.length - 1; i++) {
+          const current = list[i];
+          const next = list[i+1];
+          if (next.num > current.num + 1) {
+             hasGap = true;
+             // Found a gap
+             const gapStart = current.num + 1;
+             const gapEnd = next.num - 1;
+             const gapDesc = gapStart === gapEnd ? \`\${current.prefix}\${gapStart}\` : \`\${current.prefix}\${gapStart} s/d \${current.prefix}\${gapEnd}\`;
+             const count = gapEnd - gapStart + 1;
+             ws += \`
    <Row>
     <Cell ss:StyleID="CellText"><Data ss:Type="String">\${current.date}</Data></Cell>
     <Cell ss:StyleID="CellText"><Data ss:Type="String">\${gapDesc}</Data></Cell>
     <Cell ss:StyleID="CellText"><Data ss:Type="String">\${code}</Data></Cell>
     <Cell ss:StyleID="CellText"><Data ss:Type="String">Indikasi bolong \${count} lembar</Data></Cell>
    </Row>\`;
+          }
         }
       }
     }
