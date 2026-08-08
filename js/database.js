@@ -244,11 +244,13 @@ const DB = {
     let isEdit = false;
     if (!txData.id) {
       txData.id = 'TX-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
-      txData.createdAt = new Date().toISOString();
+      txData.createdAt = txData.createdAt || new Date().toISOString();
+      txData.updatedAt = new Date().toISOString();
     } else {
       const existingIdx = transactions.findIndex(t => t.id === txData.id);
       if (existingIdx !== -1) {
         isEdit = true;
+        txData.createdAt = txData.createdAt || transactions[existingIdx].createdAt || new Date().toISOString();
         txData.updatedAt = new Date().toISOString();
         transactions[existingIdx] = txData;
         
@@ -690,7 +692,8 @@ const DB = {
           payment_voucher: tx.paymentVoucher || 'Tunai',
           payment_admin: tx.paymentAdmin || 'Tunai',
           status: tx.status || 'SUKSES',
-          void_reason: tx.voidReason || null
+          void_reason: tx.voidReason || null,
+          updated_at: tx.updatedAt || tx.createdAt || new Date().toISOString()
         };
 
         let resHeader = await fetch(endpoint, {
@@ -706,28 +709,23 @@ const DB = {
 
         if (!resHeader.ok) {
           const errTxt = await resHeader.text();
-          if (resHeader.status === 400 && (errTxt.includes('payment_admin') || errTxt.includes('PGRST204'))) {
-            delete headerRow.payment_admin;
-            delete headerRow.payment_voucher;
-            resHeader = await fetch(endpoint, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'apikey': cfg.key,
-                'Authorization': `Bearer ${this.getSupabaseSession()?.access_token || cfg.key}`,
-                'Prefer': 'resolution=merge-duplicates'
-              },
-              body: JSON.stringify(headerRow)
-            });
-          }
-
-          if (!resHeader.ok) {
-            const errTxt2 = await resHeader.text();
-            return { success: false, message: `Gagal upload header (HTTP ${resHeader.status}): ${errTxt2}` };
-          }
+          return { success: false, message: `Gagal upload header (HTTP ${resHeader.status}): ${errTxt}` };
         }
 
         if (tx.items && Array.isArray(tx.items) && tx.items.length > 0) {
+          // Clean up any existing transaction items for this transaction before upserting updated items
+          try {
+            await fetch(`${cfg.url}/rest/v1/transaction_items?transaction_id=eq.${tx.id}`, {
+              method: 'DELETE',
+              headers: {
+                'apikey': cfg.key,
+                'Authorization': `Bearer ${this.getSupabaseSession()?.access_token || cfg.key}`
+              }
+            });
+          } catch (delErr) {
+            console.warn("Clean old items note:", delErr);
+          }
+
           const itemRows = tx.items.map(item => ({
             transaction_id: tx.id,
             voucher_code: (item.voucherCode || '').toUpperCase(),
@@ -735,7 +733,8 @@ const DB = {
             serial_end: String(item.endSerial || ''),
             quantity: Number(item.quantity) || 0,
             item_subtotal: Number(item.itemSubtotal) || 0,
-            admin_subtotal: Number(item.adminSubtotal) || 0
+            admin_subtotal: Number(item.adminSubtotal) || 0,
+            custom_price: item.customPrice !== undefined ? item.customPrice : null
           }));
 
           const resItems = await fetch(`${cfg.url}/rest/v1/transaction_items`, {
@@ -839,19 +838,31 @@ const DB = {
           status: row.status || 'SUKSES',
           voidReason: row.void_reason || null,
           createdAt: row.created_at,
+          updatedAt: row.updated_at || row.created_at || new Date().toISOString(),
           items: matchingItems.map(it => ({
             voucherCode: it.voucher_code,
             startSerial: it.serial_start,
             endSerial: it.serial_end,
             quantity: Number(it.quantity) || 0,
+            customPrice: (it.custom_price !== null && it.custom_price !== undefined) ? Number(it.custom_price) : undefined,
             itemSubtotal: Number(it.item_subtotal) || 0,
             adminSubtotal: Number(it.admin_subtotal) || 0
           }))
         };
 
+        const cloudTime = row.updated_at ? new Date(row.updated_at).getTime() : (row.created_at ? new Date(row.created_at).getTime() : 0);
+
         const existingIdx = localTxs.findIndex(t => t.id === txObj.id);
         if (existingIdx !== -1) {
-          localTxs[existingIdx] = txObj;
+          const localTx = localTxs[existingIdx];
+          const localTime = localTx.updatedAt ? new Date(localTx.updatedAt).getTime() : (localTx.createdAt ? new Date(localTx.createdAt).getTime() : 0);
+          
+          if (localTime > cloudTime) {
+            // Local record is newer than cloud record (e.g. freshly edited locally). Preserve local edits & sync back to cloud.
+            this.syncSupabaseTransaction(localTx);
+          } else {
+            localTxs[existingIdx] = txObj;
+          }
         } else {
           localTxs.push(txObj);
           mergedCount++;
@@ -1039,9 +1050,9 @@ const DB = {
 
       if (tx.items && Array.isArray(tx.items) && tx.items.length > 0) {
         tx.items.forEach((item, idx) => {
-          // Buat signature unik untuk mencegah double entry
-          const sig = `${tx.id}_${item.voucherCode || ''}_${item.startSerial || ''}_${item.endSerial || ''}`;
-          if (syncedItems.includes(sig)) return; // Lewati jika sudah pernah disinkron
+          // Buat signature unik (termasuk status pembayaran & timestamp update) untuk mencegah double entry namun mengizinkan update
+          const sig = `${tx.id}_${item.voucherCode || ''}_${item.startSerial || ''}_${item.endSerial || ''}_${pVoucher}_${pAdmin}_${tx.updatedAt || ''}`;
+          if (syncedItems.includes(sig)) return; // Lewati jika versi ini sudah pernah disinkron
 
           const itemAdmin = Number(item.adminSubtotal) || (Number(item.quantity) * 500);
           const itemClearing = (idx === 0) ? (Number(tx.clearingFee) || 0) : 0;
@@ -1073,7 +1084,7 @@ const DB = {
           signaturesToMark.push(sig);
         });
       } else {
-        const sig = `${tx.id}_MANUAL_-_-`;
+        const sig = `${tx.id}_MANUAL_-_-_${pVoucher}_${pAdmin}_${tx.updatedAt || ''}`;
         if (!syncedItems.includes(sig)) {
           payloadRows.push({
             id: tx.id || '',

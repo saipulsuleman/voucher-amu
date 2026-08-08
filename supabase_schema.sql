@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS public.transactions (
     payment_admin TEXT DEFAULT 'Tunai' NOT NULL,
     status TEXT DEFAULT 'SUKSES' NOT NULL,
     void_reason TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 -- 3. Table Transaction Items (Rincian Pecahan Per Baris)
@@ -40,6 +41,7 @@ CREATE TABLE IF NOT EXISTS public.transaction_items (
     quantity INTEGER NOT NULL,
     item_subtotal NUMERIC NOT NULL,
     admin_subtotal NUMERIC NOT NULL,
+    custom_price NUMERIC DEFAULT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     UNIQUE(transaction_id, voucher_code, serial_start)
 );

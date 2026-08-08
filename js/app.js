@@ -1738,7 +1738,8 @@ const App = {
 
     return {
       id: this.editingTxId || undefined,
-      createdAt: existingTx ? existingTx.createdAt : undefined,
+      createdAt: existingTx ? existingTx.createdAt : new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       notaNumber: notaNo,
       transactionDate: dateStr,
       customerName: customer,
