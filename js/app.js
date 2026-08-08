@@ -941,6 +941,13 @@ const App = {
         inputPrice.style.borderColor = '#cbd5e1';
         rowObj.customPrice = this.getVoucherPrice(rowObj.voucherCode);
         inputPrice.value = rowObj.customPrice;
+
+        if (btnUnlockStart) {
+          btnUnlockStart.innerText = '🔓';
+          btnUnlockStart.title = 'Klik untuk Buka Kunci & Input Seri Baru';
+          btnUnlockStart.classList.remove('btn-warning');
+          btnUnlockStart.classList.add('btn-outline-secondary');
+        }
       }
 
       // Lock to suggested start serial for the newly selected denomination

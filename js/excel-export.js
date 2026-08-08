@@ -352,22 +352,22 @@ const ExcelExport = {
 
       ws += `   <Row ss:Height="20">
     <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">${idx + 1}</Data></Cell>
-    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">${r.notaNumber}</Data></Cell>
-    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">${r.dateFormatted}</Data></Cell>
-    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">${r.monthName}</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">${escapeXML(r.notaNumber)}</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">${escapeXML(r.dateFormatted)}</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">${escapeXML(r.monthName)}</Data></Cell>
     <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">${r.yearStr}</Data></Cell>
-    <Cell ss:StyleID="CellText"><Data ss:Type="String">${r.customerName}</Data></Cell>
-    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">${r.voucherLabel}</Data></Cell>
-    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">${r.startSerial}</Data></Cell>
-    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">${r.endSerial}</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">${escapeXML(r.customerName)}</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">${escapeXML(r.voucherLabel)}</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">${escapeXML(r.startSerial)}</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">${escapeXML(r.endSerial)}</Data></Cell>
     <Cell ss:StyleID="CellRight"><Data ss:Type="Number">${r.sheets}</Data></Cell>
     <Cell ss:StyleID="Currency"><Data ss:Type="Number">${r.subtotalNominal}</Data></Cell>
-    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">${r.paymentVoucher}</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">${escapeXML(r.paymentVoucher)}</Data></Cell>
     <Cell ss:StyleID="Currency"><Data ss:Type="Number">${r.adminFee}</Data></Cell>
-    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">${r.paymentAdmin}</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">${escapeXML(r.paymentAdmin)}</Data></Cell>
     <Cell ss:StyleID="Currency"><Data ss:Type="Number">${r.clearingFee}</Data></Cell>
     <Cell ss:StyleID="Currency"><Data ss:Type="Number">${r.totalAmount}</Data></Cell>
-    <Cell ss:StyleID="CellText"><Data ss:Type="String">${r.officerName}</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">${escapeXML(r.officerName)}</Data></Cell>
    </Row>
 `;
     });

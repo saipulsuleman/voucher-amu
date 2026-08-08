@@ -280,9 +280,13 @@ const DB = {
 
     this.syncSupabaseTransaction(txData).then(res => {
       if (res && res.success) this.retryUnsyncedTransactions();
+    }).catch(err => {
+      console.warn("Supabase Sync Background Note:", err);
     });
     this.syncGoogleSheetsTransaction(txData).then(res => {
       if (res) this.retryUnsyncedTransactions();
+    }).catch(err => {
+      console.warn("Google Sheets Sync Background Note:", err);
     });
     return txData;
   },
@@ -325,9 +329,13 @@ const DB = {
     // Trigger syncs
     this.syncSupabaseTransaction(tx).then(res => {
       if (res && res.success) this.retryUnsyncedTransactions();
+    }).catch(err => {
+      console.warn("Supabase Void Sync Note:", err);
     });
     this.syncGoogleSheetsTransaction(tx).then(res => {
       if (res) this.retryUnsyncedTransactions();
+    }).catch(err => {
+      console.warn("Google Sheets Void Sync Note:", err);
     });
   },
 
