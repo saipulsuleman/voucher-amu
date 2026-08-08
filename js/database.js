@@ -288,6 +288,7 @@ const DB = {
     }).catch(err => {
       console.warn("Google Sheets Sync Background Note:", err);
     });
+    this.notifyDataChanged('save');
     return txData;
   },
 
@@ -307,6 +308,7 @@ const DB = {
         }
       }
       this.getStorage().setItem(this.KEYS.LAST_NOTA_NO, String(maxNota));
+      this.notifyDataChanged('delete');
     }
   },
 
@@ -337,6 +339,7 @@ const DB = {
     }).catch(err => {
       console.warn("Google Sheets Void Sync Note:", err);
     });
+    this.notifyDataChanged('void');
   },
 
   async deleteSupabaseTransaction(txId) {
@@ -871,6 +874,7 @@ const DB = {
         this.getStorage().setItem(this.KEYS.LAST_NOTA_NO, String(maxNota));
       }
 
+      this.notifyDataChanged('cloud-fetch');
       return { success: true, count: rawTxs.length, newAdded: mergedCount, message: `Berhasil sinkronisasi ${rawTxs.length} transaksi dari Supabase!` };
     } catch (err) {
       return { success: false, message: `Error Sinkronisasi Cloud: ${err.message}` };
@@ -1133,6 +1137,64 @@ const DB = {
       await new Promise(r => setTimeout(r, 150));
     }
     return { total: sortedTxs.length, success: successCount };
+  },
+
+  notifyDataChanged(source = 'local') {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('amu-transactions-changed', { detail: { source } }));
+    }
+  },
+
+  _realtimeChannel: null,
+  _pollingTimer: null,
+  _supabaseClient: null,
+
+  initRealtimeSubscription() {
+    const cfg = this.getSupabaseConfig();
+    if (!cfg || !cfg.url || !cfg.key) return;
+
+    if (typeof window !== 'undefined' && window.supabase && window.supabase.createClient) {
+      try {
+        if (!this._supabaseClient) {
+          this._supabaseClient = window.supabase.createClient(cfg.url, cfg.key);
+        }
+        if (this._realtimeChannel) {
+          this._supabaseClient.removeChannel(this._realtimeChannel);
+        }
+        this._realtimeChannel = this._supabaseClient
+          .channel('public:transactions')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'transactions' },
+            async (payload) => {
+              console.log('⚡ Realtime Supabase Change Detected:', payload.eventType);
+              await this.fetchSupabaseTransactions();
+              this.notifyDataChanged('supabase-realtime');
+            }
+          )
+          .subscribe();
+      } catch (err) {
+        console.warn('Realtime subscription fallback to polling:', err);
+      }
+    }
+
+    if (typeof window !== 'undefined' && !this._pollingTimer) {
+      this._pollingTimer = setInterval(async () => {
+        if (document.visibilityState === 'visible') {
+          const res = await this.fetchSupabaseTransactions();
+          if (res && res.success && res.newAdded > 0) {
+            this.notifyDataChanged('polling-new-data');
+          }
+        }
+      }, 10000);
+
+      window.addEventListener('focus', async () => {
+        const res = await this.fetchSupabaseTransactions();
+        if (res && res.success) {
+          this.notifyDataChanged('window-focus');
+        }
+      });
+    }
   }
 };
 

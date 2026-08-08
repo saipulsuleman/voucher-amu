@@ -5,15 +5,57 @@ const Dashboard = {
     const btnRefresh = document.getElementById('btn-refresh-dashboard');
     const filterRange = document.getElementById('dash-filter-range');
 
-    btnRefresh?.addEventListener('click', () => this.renderDashboard());
+    btnRefresh?.addEventListener('click', async () => {
+      const origText = btnRefresh.innerText;
+      btnRefresh.disabled = true;
+      btnRefresh.innerText = '🔄 Menyinkronkan...';
+      try {
+        await DB.fetchSupabaseTransactions();
+      } catch (e) {
+        console.warn('Manual refresh sync note:', e);
+      }
+      this.renderDashboard();
+      btnRefresh.innerText = origText;
+      btnRefresh.disabled = false;
+    });
+
     filterRange?.addEventListener('change', () => this.renderDashboard());
+
+    // Listen to real-time transaction changes across application
+    if (typeof window !== 'undefined') {
+      window.addEventListener('amu-transactions-changed', () => {
+        this.renderDashboard();
+      });
+    }
+  },
+
+  parseTxDate(dateStr) {
+    if (!dateStr) return null;
+    // Standard ISO/YYYY-MM-DD parse
+    let d = new Date(dateStr);
+    if (!isNaN(d.getTime())) return d;
+
+    // Handle DD/MM/YYYY format if present
+    if (typeof dateStr === 'string' && dateStr.includes('/')) {
+      const parts = dateStr.split('/');
+      if (parts.length === 3) {
+        if (parts[0].length === 4) {
+          d = new Date(parts[0], parseInt(parts[1], 10) - 1, parts[2]);
+        } else {
+          d = new Date(parts[2], parseInt(parts[1], 10) - 1, parts[0]);
+        }
+        if (!isNaN(d.getTime())) return d;
+      }
+    }
+    return null;
   },
 
   renderDashboard() {
     let allTx = DB.getTransactions() || [];
     allTx = allTx.filter(t => t.status !== 'VOID'); // Only active transactions
 
-    const rangeType = document.getElementById('dash-filter-range')?.value || 'this_month';
+    const rangeSelect = document.getElementById('dash-filter-range');
+    const rangeType = rangeSelect?.value || 'this_month';
     const filteredTx = this.filterByRange(allTx, rangeType);
 
     this.updateKPIs(filteredTx);
@@ -29,19 +71,19 @@ const Dashboard = {
     let startDate, endDate;
 
     if (rangeType === 'this_month') {
-      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
       endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
     } else if (rangeType === 'last_month') {
-      startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0);
       endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
     } else if (rangeType === 'this_year') {
-      startDate = new Date(now.getFullYear(), 0, 1);
+      startDate = new Date(now.getFullYear(), 0, 1, 0, 0, 0);
       endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
     }
 
     return transactions.filter(t => {
-      const txDate = new Date(t.transactionDate || t.createdAt);
-      if (isNaN(txDate)) return true;
+      const txDate = this.parseTxDate(t.transactionDate) || this.parseTxDate(t.createdAt);
+      if (!txDate) return true;
       return txDate >= startDate && txDate <= endDate;
     });
   },
@@ -67,24 +109,29 @@ const Dashboard = {
 
     const netIncome = (totalVoucher + totalAdmin) - totalClearing;
 
-    document.getElementById('dash-kpi-voucher').innerText = this.formatRp(totalVoucher);
-    document.getElementById('dash-kpi-admin').innerText = this.formatRp(totalAdmin);
-    document.getElementById('dash-kpi-net').innerText = this.formatRp(netIncome);
+    const elVoucher = document.getElementById('dash-kpi-voucher');
+    const elAdmin = document.getElementById('dash-kpi-admin');
+    const elNet = document.getElementById('dash-kpi-net');
+
+    if (elVoucher) elVoucher.innerText = this.formatRp(totalVoucher);
+    if (elAdmin) elAdmin.innerText = this.formatRp(totalAdmin);
+    if (elNet) elNet.innerText = this.formatRp(netIncome);
   },
 
   destroyChart(chartId) {
     if (this.charts[chartId]) {
       this.charts[chartId].destroy();
+      delete this.charts[chartId];
     }
   },
 
   renderTrendChart(transactions) {
     this.destroyChart('chart-trend');
     
-    // Group by Date
+    // Group totals by Date
     const dailyData = {};
     transactions.forEach(tx => {
-      const dStr = tx.transactionDate || 'Unknown';
+      const dStr = tx.transactionDate || 'Tanpa Tanggal';
       if (!dailyData[dStr]) dailyData[dStr] = 0;
       
       let txTotal = 0;
@@ -98,20 +145,21 @@ const Dashboard = {
       dailyData[dStr] += txTotal;
     });
 
-    // Sort by Date
+    // Sort dates chronologically
     const sortedDates = Object.keys(dailyData).sort();
     const dataPoints = sortedDates.map(d => dailyData[d]);
 
-    const ctx = document.getElementById('chart-trend')?.getContext('2d');
+    const canvas = document.getElementById('chart-trend');
+    const ctx = canvas?.getContext('2d');
     if (!ctx) return;
 
     this.charts['chart-trend'] = new Chart(ctx, {
       type: 'line',
       data: {
-        labels: sortedDates,
+        labels: sortedDates.length > 0 ? sortedDates : ['Tidak Ada Data'],
         datasets: [{
           label: 'Laba Bersih Harian (Rp)',
-          data: dataPoints,
+          data: dataPoints.length > 0 ? dataPoints : [0],
           borderColor: '#2563eb',
           backgroundColor: 'rgba(37, 99, 235, 0.1)',
           tension: 0.3,
@@ -140,23 +188,34 @@ const Dashboard = {
     let transfer = 0;
 
     transactions.forEach(tx => {
-      const method = (tx.paymentVoucher || 'Tunai').toLowerCase();
-      let txTotal = 0;
+      const methodV = (tx.paymentVoucher || 'Tunai').toLowerCase();
+      const methodA = (tx.paymentAdmin || 'Tunai').toLowerCase();
+      
+      let vTotal = 0;
+      let aTotal = 0;
+
       if (tx.items) {
         tx.items.forEach(item => {
-          txTotal += Number(item.itemSubtotal) || 0;
-          txTotal += Number(item.adminSubtotal) || (Number(item.quantity) * 500);
+          vTotal += Number(item.itemSubtotal) || 0;
+          aTotal += Number(item.adminSubtotal) || (Number(item.quantity) * 500);
         });
       }
-      
-      if (method.includes('transfer') || method.includes('bank')) {
-        transfer += txTotal;
+
+      if (methodV.includes('transfer') || methodV.includes('bank')) {
+        transfer += vTotal;
       } else {
-        tunai += txTotal;
+        tunai += vTotal;
+      }
+
+      if (methodA.includes('transfer') || methodA.includes('bank')) {
+        transfer += aTotal;
+      } else {
+        tunai += aTotal;
       }
     });
 
-    const ctx = document.getElementById('chart-payment')?.getContext('2d');
+    const canvas = document.getElementById('chart-payment');
+    const ctx = canvas?.getContext('2d');
     if (!ctx) return;
 
     this.charts['chart-payment'] = new Chart(ctx, {
@@ -164,7 +223,7 @@ const Dashboard = {
       data: {
         labels: ['Kas Tunai', 'Transfer Bank'],
         datasets: [{
-          data: [tunai, transfer],
+          data: (tunai === 0 && transfer === 0) ? [1, 0] : [tunai, transfer],
           backgroundColor: ['#10b981', '#f59e0b'],
           borderWidth: 1
         }]
@@ -195,10 +254,12 @@ const Dashboard = {
       }
     });
 
-    const labels = Object.keys(productCounts);
-    const dataPoints = Object.values(productCounts);
+    const sortedProducts = Object.keys(productCounts).sort((a, b) => productCounts[b] - productCounts[a]);
+    const labels = sortedProducts.length > 0 ? sortedProducts : ['Tidak Ada Data'];
+    const dataPoints = sortedProducts.length > 0 ? sortedProducts.map(k => productCounts[k]) : [0];
 
-    const ctx = document.getElementById('chart-product')?.getContext('2d');
+    const canvas = document.getElementById('chart-product');
+    const ctx = canvas?.getContext('2d');
     if (!ctx) return;
 
     this.charts['chart-product'] = new Chart(ctx, {

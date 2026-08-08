@@ -87,6 +87,7 @@ const App = {
     const cfg = DB.getSupabaseConfig();
     if (cfg && cfg.url && cfg.key) {
       await this.autoSyncFromSupabase();
+      DB.initRealtimeSubscription();
     }
   },
 
@@ -135,6 +136,7 @@ const App = {
       const res = await DB.fetchSupabaseTransactions();
       if (res && res.success) {
         this.renderHistoryTable();
+        if (typeof Dashboard !== 'undefined') Dashboard.renderDashboard();
       }
     } catch (e) {
       console.warn("Auto sync Supabase note:", e);
@@ -1780,7 +1782,6 @@ const App = {
     if (isEdit) {
       if (!skipReset) this.cancelEdit();
       this._showSaveToast(`${savedNotaNo} (Di-update)`);
-      this.renderHistoryTable();
     } else {
       if (skipReset) {
         this.editingTxId = savedTx.id;
@@ -1789,6 +1790,8 @@ const App = {
       }
       this._showSaveToast(savedNotaNo);
     }
+    this.renderHistoryTable();
+    if (typeof Dashboard !== 'undefined') Dashboard.renderDashboard();
     return savedTx;
   },
 
@@ -2490,6 +2493,7 @@ const App = {
         if (reason !== null && reason.trim() !== '') {
           DB.voidTransaction(id, reason.trim());
           this.renderHistoryTable();
+          if (typeof Dashboard !== 'undefined') Dashboard.renderDashboard();
         }
       });
     });
