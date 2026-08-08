@@ -1011,6 +1011,11 @@ const DB = {
     }
   },
 
+  clearSyncedGSheetsCache() {
+    this.init();
+    this.getStorage().removeItem('amu_gsheets_synced');
+  },
+
   getSyncedGSheetsItems() {
     this.init();
     try {
@@ -1034,7 +1039,7 @@ const DB = {
     }
   },
 
-  async syncGoogleSheetsTransaction(tx) {
+  async syncGoogleSheetsTransaction(tx, options = {}) {
     const webhookUrl = this.getGoogleSheetsUrl();
     if (!webhookUrl || typeof fetch === 'undefined') return false;
 
@@ -1047,12 +1052,13 @@ const DB = {
       const payloadRows = [];
       const signaturesToMark = [];
       const syncedItems = this.getSyncedGSheetsItems();
+      const force = !!(options && options.force);
 
       if (tx.items && Array.isArray(tx.items) && tx.items.length > 0) {
         tx.items.forEach((item, idx) => {
-          // Buat signature unik (termasuk status pembayaran & timestamp update) untuk mencegah double entry namun mengizinkan update
-          const sig = `${tx.id}_${item.voucherCode || ''}_${item.startSerial || ''}_${item.endSerial || ''}_${pVoucher}_${pAdmin}_${tx.updatedAt || ''}`;
-          if (syncedItems.includes(sig)) return; // Lewati jika versi ini sudah pernah disinkron
+          // Unique signature per item version (incorporates tx.updatedAt and tx.status for edits & void)
+          const sig = `${tx.id}_item${idx}_${item.voucherCode || ''}_${item.startSerial || ''}_${item.endSerial || ''}_${pVoucher}_${pAdmin}_${tx.customerName || ''}_${tx.updatedAt || ''}_${tx.status || ''}`;
+          if (!force && syncedItems.includes(sig)) return;
 
           const itemAdmin = Number(item.adminSubtotal) || (Number(item.quantity) * 500);
           const itemClearing = (idx === 0) ? (Number(tx.clearingFee) || 0) : 0;
@@ -1061,6 +1067,7 @@ const DB = {
 
           payloadRows.push({
             id: tx.id || '',
+            item_no: idx + 1,
             nota_number: tx.notaNumber || '',
             transaction_date: tx.transactionDate || tx.date || '',
             date_formatted: dateInfo.dateFormatted,
@@ -1084,10 +1091,11 @@ const DB = {
           signaturesToMark.push(sig);
         });
       } else {
-        const sig = `${tx.id}_MANUAL_-_-_${pVoucher}_${pAdmin}_${tx.updatedAt || ''}`;
-        if (!syncedItems.includes(sig)) {
+        const sig = `${tx.id}_MANUAL_-_-_${pVoucher}_${pAdmin}_${tx.customerName || ''}_${tx.updatedAt || ''}_${tx.status || ''}`;
+        if (force || !syncedItems.includes(sig)) {
           payloadRows.push({
             id: tx.id || '',
+            item_no: 1,
             nota_number: tx.notaNumber || '',
             transaction_date: tx.transactionDate || tx.date || '',
             date_formatted: dateInfo.dateFormatted,
@@ -1120,7 +1128,11 @@ const DB = {
         headers: {
           'Content-Type': 'text/plain;charset=utf-8'
         },
-        body: JSON.stringify(payloadRows)
+        body: JSON.stringify({
+          action: 'upsert',
+          tx_id: tx.id || '',
+          rows: payloadRows
+        })
       });
       
       this.markGSheetsItemSynced(signaturesToMark);
@@ -1131,21 +1143,25 @@ const DB = {
     }
   },
 
-  async syncAllToGoogleSheets(progressCallback) {
+  async syncAllToGoogleSheets(progressCallback, options = {}) {
     const transactions = this.getTransactions();
     if (!transactions || transactions.length === 0) return { total: 0, success: 0 };
+
+    if (options && options.resetCache) {
+      this.clearSyncedGSheetsCache();
+    }
 
     let successCount = 0;
     const sortedTxs = [...transactions].reverse();
 
     for (let i = 0; i < sortedTxs.length; i++) {
       const tx = sortedTxs[i];
-      const ok = await this.syncGoogleSheetsTransaction(tx);
+      const ok = await this.syncGoogleSheetsTransaction(tx, { force: options.force !== false });
       if (ok) successCount++;
       if (typeof progressCallback === 'function') {
         progressCallback(i + 1, sortedTxs.length);
       }
-      await new Promise(r => setTimeout(r, 150));
+      await new Promise(r => setTimeout(r, 120));
     }
     return { total: sortedTxs.length, success: successCount };
   },

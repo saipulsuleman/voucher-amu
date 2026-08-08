@@ -524,24 +524,49 @@ const App = {
     document.getElementById('btn-save-gsheet-url')?.addEventListener('click', () => {
       const url = document.getElementById('input-gsheet-url')?.value.trim();
       if (!url) {
-        alert("⚠️ Mohon masukkan URL Web App Google Apps Script!");
+        alert("⚠️ Mohon masukkan URL Web App Google Apps Script dari Google Sheet Baru Anda!");
         return;
       }
       DB.setGoogleSheetsUrl(url);
-      alert("✅ URL Web App Google Sheets berhasil disimpan!");
+      DB.clearSyncedGSheetsCache();
+      alert("✅ URL Web App Google Sheet Baru berhasil disimpan! Anda dapat menekan tombol 'Sync Semua Data' untuk menyalurkan seluruh data ke Google Sheet Baru.");
     });
 
     document.getElementById('btn-sync-all-gsheet')?.addEventListener('click', async () => {
       const btn = document.getElementById('btn-sync-all-gsheet');
       const origText = btn.innerHTML;
       btn.disabled = true;
-      btn.innerHTML = '⏳ Mengirim data transaksi...';
+      btn.innerHTML = '⏳ Mengirim data ke Google Sheet Baru...';
       const res = await DB.syncAllToGoogleSheets((curr, total) => {
         btn.innerHTML = `⏳ Sync (${curr}/${total})...`;
-      });
+      }, { force: true, resetCache: true });
       btn.disabled = false;
       btn.innerHTML = origText;
-      alert(`✅ Sync Semua Data Selesai!\n${res.success} dari ${res.total} transaksi berhasil terkirim ke Google Sheets.`);
+      alert(`✅ Sync ke Google Sheet Baru Selesai!\n${res.success} dari ${res.total} transaksi berhasil terkirim ke Google Sheets.`);
+    });
+
+    // Modal Guide Listeners
+    const modalGuide = document.getElementById('gsheet-guide-modal');
+    document.getElementById('btn-show-gsheet-guide')?.addEventListener('click', () => {
+      if (modalGuide) modalGuide.style.display = 'flex';
+    });
+    const closeModal = () => {
+      if (modalGuide) modalGuide.style.display = 'none';
+    };
+    document.getElementById('btn-close-gsheet-guide')?.addEventListener('click', closeModal);
+    document.getElementById('btn-close-gsheet-guide-2')?.addEventListener('click', closeModal);
+
+    document.getElementById('btn-copy-codegs')?.addEventListener('click', () => {
+      const txt = document.getElementById('codegs-textarea');
+      if (txt) {
+        txt.select();
+        navigator.clipboard.writeText(txt.value).then(() => {
+          alert("📋 Skrip Code.gs berhasil disalin ke clipboard! Silakan tempelkan ke Apps Script di Google Sheet Baru.");
+        }).catch(() => {
+          document.execCommand('copy');
+          alert("📋 Skrip Code.gs berhasil disalin!");
+        });
+      }
     });
   },
 

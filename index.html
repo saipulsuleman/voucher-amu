@@ -563,21 +563,175 @@
         </div>
 
         <div class="card" style="grid-column: 1 / -1;">
-          <div class="card-title">
+          <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
             <span>📊 Sinkronisasi Otomatis Google Sheets</span>
+            <button id="btn-show-gsheet-guide" class="btn btn-outline btn-sm" style="border-color: #0284c7; color: #0284c7;">📖 Skrip & Panduan Setup Google Sheet Baru</button>
           </div>
           <p style="margin-bottom: 1rem; color: var(--text-muted);">
-            URL Web App Google Apps Script terkonfigurasi otomatis untuk sinkronisasi laporan transaksi real-time ke Google Spreadsheet.
+            Masukkan URL Web App Google Apps Script dari Google Sheet Baru Anda untuk sinkronisasi otomatis laporan transaksi real-time (upsert in-place & anti-duplikasi).
           </p>
           <div class="form-group">
-            <label class="form-label">Google Apps Script WebApp URL</label>
+            <label class="form-label">Google Apps Script WebApp URL (Google Sheet Baru)</label>
             <input type="text" id="input-gsheet-url" class="form-control" placeholder="https://script.google.com/macros/s/.../exec">
           </div>
           <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-            <button id="btn-save-gsheet-url" class="btn btn-primary">💾 Simpan URL Web App</button>
-            <button id="btn-sync-all-gsheet" class="btn btn-secondary" style="background: #059669; color: white; border: none;">🚀 Sync Semua Data Historis ke Google Sheets</button>
+            <button id="btn-save-gsheet-url" class="btn btn-primary">💾 Simpan URL Web App Baru</button>
+            <button id="btn-sync-all-gsheet" class="btn btn-secondary" style="background: #059669; color: white; border: none;">🚀 Sync Semua Data ke Google Sheet Baru</button>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Google Sheets Guide Modal -->
+  <div id="gsheet-guide-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.7); z-index: 1050; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div style="background: white; padding: 1.75rem; border-radius: 12px; width: 92%; max-width: 750px; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="margin: 0; color: #1e293b;">📋 Panduan Setup Google Sheet Baru</h3>
+        <button id="btn-close-gsheet-guide" style="background: none; border: none; font-size: 1.25rem; cursor: pointer; color: #64748b;">✕</button>
+      </div>
+      
+      <ol style="margin-left: 1.25rem; color: #334155; line-height: 1.6; font-size: 0.95rem;">
+        <li>Buka <a href="https://sheets.new" target="_blank" style="color: #0284c7; font-weight: 600;">sheets.new</a> untuk membuat Google Sheet baru di Drive Anda.</li>
+        <li>Buka menu <b>Ekstensi -> Apps Script</b>.</li>
+        <li>Hapus seluruh kode default di <code>Code.gs</code>, lalu salin dan tempelkan skrip di bawah ini.</li>
+        <li>Klik tombol <b>Terapkan (Deploy) -> Penerapan Baru (New Deployment)</b>.</li>
+        <li>Pilih jenis: <b>Aplikasi Web (Web App)</b>, Pengontrol: <b>Saya (Me)</b>, Akses: <b>Siapa saja (Anyone)</b>.</li>
+        <li>Klik <b>Terapkan</b>, izinkan akses Google Account jika diminta, lalu salin <b>URL Web App</b> yang dihasilkan ke dalam form pengaturan aplikasi ini.</li>
+      </ol>
+
+      <div style="margin-top: 1rem; position: relative;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+          <label style="font-weight: 600; font-size: 0.85rem; color: #475569;">Skrip Apps Script (Code.gs)</label>
+          <button id="btn-copy-codegs" class="btn btn-sm" style="background: #0284c7; color: white; border: none;">📋 Salin Skrip Code.gs</button>
+        </div>
+        <textarea id="codegs-textarea" readonly style="width: 100%; height: 260px; font-family: monospace; font-size: 0.8rem; background: #0f172a; color: #38bdf8; padding: 0.75rem; border-radius: 6px; border: none; resize: vertical;">
+function doPost(e) {
+  var lock = LockService.getScriptLock();
+  lock.tryLock(10000);
+
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    ensureHeaders(sheet);
+
+    var data = JSON.parse(e.postData.contents);
+    var rows = Array.isArray(data) ? data : (data.rows || [data]);
+    if (!rows || rows.length === 0) {
+      return responseJSON({ status: 'success', message: 'No rows provided' });
+    }
+
+    var lastRow = sheet.getLastRow();
+    var existingData = lastRow > 4 ? sheet.getRange(5, 1, lastRow - 4, 19).getValues() : [];
+    
+    var txGroups = {};
+    rows.forEach(function(row) {
+      var txId = row.id || row.tx_id || '';
+      if (!txId) return;
+      if (!txGroups[txId]) txGroups[txId] = [];
+      txGroups[txId].push(row);
+    });
+
+    for (var txId in txGroups) {
+      var incomingTxRows = txGroups[txId];
+      var matchingSheetRowIndices = [];
+      for (var i = 0; i < existingData.length; i++) {
+        if (String(existingData[i][0]) === String(txId)) {
+          matchingSheetRowIndices.push(i + 5);
+        }
+      }
+
+      if (matchingSheetRowIndices.length > 0) {
+        var firstRowIdx = matchingSheetRowIndices[0];
+        var existingCount = matchingSheetRowIndices.length;
+        var newCount = incomingTxRows.length;
+
+        for (var j = 0; j < newCount; j++) {
+          var targetRow = firstRowIdx + j;
+          if (j < existingCount) {
+            sheet.getRange(targetRow, 1, 1, 19).setValues([formatRowData(incomingTxRows[j], j + 1)]);
+          } else {
+            sheet.insertRowAfter(firstRowIdx + j - 1);
+            sheet.getRange(targetRow, 1, 1, 19).setValues([formatRowData(incomingTxRows[j], j + 1)]);
+          }
+        }
+        if (existingCount > newCount) {
+          for (var k = existingCount - 1; k >= newCount; k--) {
+            sheet.deleteRow(firstRowIdx + k);
+          }
+        }
+      } else {
+        incomingTxRows.forEach(function(r, idx) {
+          sheet.appendRow(formatRowData(r, idx + 1));
+        });
+      }
+
+      lastRow = sheet.getLastRow();
+      existingData = lastRow > 4 ? sheet.getRange(5, 1, lastRow - 4, 19).getValues() : [];
+    }
+
+    return responseJSON({ status: 'success', processed: rows.length });
+  } catch (err) {
+    return responseJSON({ status: 'error', message: err.toString() });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function responseJSON(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function ensureHeaders(sheet) {
+  if (sheet.getLastRow() < 4) {
+    sheet.clear();
+    sheet.getRange("A1:S1").merge().setValue("PT. ARBA MITRA USAHA GORONTALO (SPBU 74-961-4)")
+      .setFontWeight("bold").setFontSize(14).setFontColor("#E2231A").setHorizontalAlignment("center");
+    sheet.getRange("A2:S2").merge().setValue("LAPORAN PENJUALAN VOUCHER - SINKRONISASI OTOMATIS")
+      .setFontWeight("bold").setFontSize(12).setHorizontalAlignment("center");
+    sheet.getRange("A3:S3").merge().setValue("Sistem Otomasi Voucher & Nota Kwitansi | SPBU 74-961-4")
+      .setFontItalic(true).setFontSize(10).setFontColor("#64748B").setHorizontalAlignment("center");
+    
+    var headers = [
+      "ID Tx", "No.", "No. Nota", "Tanggal", "Bulan", "Tahun", 
+      "Nama Instansi", "Pecahan", "Seri Awal", "Seri Akhir", "Lembar", 
+      "Subtotal Nominal", "Metode Pembayaran Voucher", "Admin", 
+      "Metode Pembayaran Admin", "Biaya Clearing", "Total", "Petugas / TTD", "Status"
+    ];
+    sheet.getRange(4, 1, 1, headers.length).setValues([headers])
+      .setBackground("#E2231A").setFontColor("#FFFFFF").setFontWeight("bold").setHorizontalAlignment("center");
+    sheet.setFrozenRows(4);
+  }
+}
+
+function formatRowData(row, itemNo) {
+  return [
+    row.id || '',
+    itemNo || 1,
+    row.nota_number || '',
+    row.date_formatted || '',
+    row.month_name || '',
+    row.year_str || '',
+    row.customer_name || '',
+    row.voucher_label || '',
+    row.start_serial || '',
+    row.end_serial || '',
+    Number(row.sheets) || 0,
+    Number(row.subtotal_nominal) || 0,
+    row.payment_voucher || 'Tunai',
+    Number(row.admin_fee) || 0,
+    row.payment_admin || 'Tunai',
+    Number(row.clearing_fee) || 0,
+    Number(row.total_amount) || 0,
+    row.officer_name || '',
+    row.status || 'SUKSES'
+  ];
+}</textarea>
+      </div>
+
+      <div style="margin-top: 1.25rem; text-align: right;">
+        <button id="btn-close-gsheet-guide-2" class="btn btn-secondary">Tutup</button>
       </div>
     </div>
   </div>
