@@ -617,13 +617,16 @@ function doPost(e) {
 
 function handleRequest(e) {
   var lock = LockService.getScriptLock();
-  lock.tryLock(10000);
+  lock.tryLock(15000);
 
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    if (!ss) return responseJSON({ status: 'error', message: 'No active spreadsheet found. Pastikan Apps Script dibuka dari menu Ekstensi -> Apps Script di Google Sheet Anda!' });
-    var sheet = ss.getActiveSheet() || ss.getSheets()[0];
-    ensureHeaders(sheet);
+    if (!ss) {
+      return responseJSON({ 
+        status: 'error', 
+        message: 'No active spreadsheet found. Pastikan Apps Script dibuka dari menu Ekstensi -> Apps Script di dalam Google Sheet Anda!' 
+      });
+    }
 
     var rawContent = null;
     if (e && e.parameter && e.parameter.payload) {
@@ -653,61 +656,45 @@ function handleRequest(e) {
       return responseJSON({ status: 'success', message: 'No rows provided' });
     }
 
-    var lastRow = sheet.getLastRow();
-    var existingData = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, 19).getValues() : [];
-    
-    var txGroups = {};
-    rows.forEach(function(row, idx) {
-      var txId = row.id || row.tx_id || row.nota_number || ('TX-' + idx);
-      if (!txGroups[txId]) txGroups[txId] = [];
-      txGroups[txId].push(row);
+    // Sort rows by Nota Number (asc), then Start Serial
+    rows.sort(function(a, b) {
+      var notaA = parseInt(a.nota_number, 10) || 0;
+      var notaB = parseInt(b.nota_number, 10) || 0;
+      if (notaA !== notaB) return notaA - notaB;
+
+      var serialA = parseInt(String(a.start_serial || '').replace(/\D/g, ''), 10) || 0;
+      var serialB = parseInt(String(b.start_serial || '').replace(/\D/g, ''), 10) || 0;
+      var groupA = (serialA >= 99000 && serialA <= 100000) ? 0 : 1;
+      var groupB = (serialB >= 99000 && serialB <= 100000) ? 0 : 1;
+      if (groupA !== groupB) return groupA - groupB;
+      return serialA - serialB;
     });
 
-    for (var txId in txGroups) {
-      var incomingTxRows = txGroups[txId];
-      var incomingTxIdStr = String(txId).trim();
-      var incomingNotaStr = incomingTxRows[0] && incomingTxRows[0].nota_number != null ? String(incomingTxRows[0].nota_number).trim() : '';
+    // Group rows into sheets matching Excel Export structure
+    var sheetsMap = {
+      "REKAPITULASI TOTAL": rows,
+      "Voucher 25k": [],
+      "Voucher 50k": [],
+      "Voucher 100k": [],
+      "Voucher 200k": [],
+      "Voucher 300k": [],
+      "Voucher Manual": []
+    };
 
-      var matchingSheetRowIndices = [];
-      for (var i = 0; i < existingData.length; i++) {
-        var sheetTxIdStr = String(existingData[i][0] || '').trim();
-        var sheetNotaStr = String(existingData[i][2] || '').trim();
-        if ((incomingTxIdStr && sheetTxIdStr === incomingTxIdStr) || (incomingNotaStr && sheetNotaStr === incomingNotaStr)) {
-          matchingSheetRowIndices.push(i + 2);
-        }
-      }
+    rows.forEach(function(r) {
+      var code = String(r.voucher_code || '').toUpperCase();
+      if (code === 'V25') sheetsMap["Voucher 25k"].push(r);
+      else if (code === 'V50') sheetsMap["Voucher 50k"].push(r);
+      else if (code === 'V100') sheetsMap["Voucher 100k"].push(r);
+      else if (code === 'V200') sheetsMap["Voucher 200k"].push(r);
+      else if (code === 'V300') sheetsMap["Voucher 300k"].push(r);
+      else sheetsMap["Voucher Manual"].push(r);
+    });
 
-      if (matchingSheetRowIndices.length > 0) {
-        var firstRowIdx = matchingSheetRowIndices[0];
-        var existingCount = matchingSheetRowIndices.length;
-        var newCount = incomingTxRows.length;
-
-        for (var j = 0; j < newCount; j++) {
-          var targetRow = firstRowIdx + j;
-          var rowVals = formatRowData(incomingTxRows[j], j + 1);
-          if (j < existingCount) {
-            sheet.getRange(targetRow, 1, 1, 19).setValues([rowVals]);
-          } else {
-            sheet.insertRowAfter(firstRowIdx + j - 1);
-            sheet.getRange(targetRow, 1, 1, 19).setValues([rowVals]);
-          }
-        }
-        if (existingCount > newCount) {
-          for (var k = existingCount - 1; k >= newCount; k--) {
-            sheet.deleteRow(firstRowIdx + k);
-          }
-        }
-      } else {
-        incomingTxRows.forEach(function(r, idx) {
-          var rowVals = formatRowData(r, idx + 1);
-          var nextRow = sheet.getLastRow() + 1;
-          if (nextRow < 2) nextRow = 2;
-          sheet.getRange(nextRow, 1, 1, 19).setValues([rowVals]);
-        });
-      }
-
-      lastRow = sheet.getLastRow();
-      existingData = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, 19).getValues() : [];
+    // Populate each worksheet
+    for (var sheetName in sheetsMap) {
+      var sheetRows = sheetsMap[sheetName];
+      populateWorksheet(ss, sheetName, sheetRows);
     }
 
     return responseJSON({ status: 'success', processed: rows.length });
@@ -724,43 +711,111 @@ function responseJSON(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-function ensureHeaders(sheet) {
-  var firstCellVal = sheet.getRange(1, 1).getValue();
-  if (firstCellVal !== "ID Tx") {
-    var headers = [
-      "ID Tx", "No.", "No. Nota", "Tanggal", "Bulan", "Tahun", 
-      "Nama Instansi", "Pecahan", "Seri Awal", "Seri Akhir", "Lembar", 
-      "Subtotal Nominal", "Metode Pembayaran Voucher", "Admin", 
-      "Metode Pembayaran Admin", "Biaya Clearing", "Total", "Petugas / TTD", "Status"
-    ];
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers])
-      .setBackground("#E2231A").setFontColor("#FFFFFF").setFontWeight("bold").setHorizontalAlignment("center");
-    try { sheet.setFrozenRows(1); } catch(e) {}
+function populateWorksheet(ss, sheetName, rows) {
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
   }
-}
 
-function formatRowData(row, itemNo) {
-  return [
-    row.id || '',
-    itemNo || 1,
-    row.nota_number || '',
-    row.date_formatted || '',
-    row.month_name || '',
-    row.year_str || '',
-    row.customer_name || '',
-    row.voucher_label || '',
-    row.start_serial || '',
-    row.end_serial || '',
-    Number(row.sheets) || 0,
-    Number(row.subtotal_nominal) || 0,
-    row.payment_voucher || 'Tunai',
-    Number(row.admin_fee) || 0,
-    row.payment_admin || 'Tunai',
-    Number(row.clearing_fee) || 0,
-    Number(row.total_amount) || 0,
-    row.officer_name || '',
-    row.status || 'SUKSES'
+  sheet.clearContents();
+  sheet.clearFormats();
+
+  // Kop Surat (Rows 1-3)
+  sheet.getRange("A1:Q1").merge().setValue("PT. ARBA MITRA USAHA GORONTALO (SPBU 74-961-4)")
+    .setFontWeight("bold").setFontSize(14).setFontColor("#E2231A").setHorizontalAlignment("center");
+  sheet.getRange("A2:Q2").merge().setValue("LAPORAN PENJUALAN VOUCHER - " + sheetName.toUpperCase())
+    .setFontWeight("bold").setFontSize(12).setFontColor("#1E293B").setHorizontalAlignment("center");
+  sheet.getRange("A3:Q3").merge().setValue("Sistem Otomasi Voucher & Nota Kwitansi | SPBU 74-961-4")
+    .setFontItalic(true).setFontSize(10).setFontColor("#64748B").setHorizontalAlignment("center");
+
+  // Header (Row 4)
+  var headers = [
+    "No.", "No. Nota", "Tanggal", "Bulan", "Tahun", "Nama Instansi", "Pecahan", 
+    "Seri Awal", "Seri Akhir", "Lembar", "Subtotal Nominal", "Metode Pembayaran Voucher", 
+    "Admin", "Metode Pembayaran Admin", "Biaya Clearing", "Total", "Petugas / TTD"
   ];
+  var headerRange = sheet.getRange(4, 1, 1, headers.length);
+  headerRange.setValues([headers])
+    .setBackground("#E2231A")
+    .setFontColor("#FFFFFF")
+    .setFontWeight("bold")
+    .setHorizontalAlignment("center")
+    .setVerticalAlignment("middle")
+    .setWrapText(true);
+  
+  try { sheet.setFrozenRows(4); } catch(e) {}
+
+  var totalSheets = 0;
+  var totalSubtotal = 0;
+  var totalAdmin = 0;
+  var totalClearing = 0;
+  var grandTotal = 0;
+
+  if (rows && rows.length > 0) {
+    var dataValues = [];
+    rows.forEach(function(r, idx) {
+      var sheetsVal = Number(r.sheets) || 0;
+      var subtotalVal = Number(r.subtotal_nominal) || 0;
+      var adminVal = Number(r.admin_fee) || 0;
+      var clearingVal = Number(r.clearing_fee) || 0;
+      var totalVal = Number(r.total_amount) || (subtotalVal + adminVal + clearingVal);
+
+      totalSheets += sheetsVal;
+      totalSubtotal += subtotalVal;
+      totalAdmin += adminVal;
+      totalClearing += clearingVal;
+      grandTotal += totalVal;
+
+      dataValues.push([
+        idx + 1,
+        r.nota_number || '',
+        r.date_formatted || '',
+        r.month_name || '',
+        r.year_str || '',
+        r.customer_name || '',
+        r.voucher_label || '',
+        r.start_serial || '',
+        r.end_serial || '',
+        sheetsVal,
+        subtotalVal,
+        r.payment_voucher || 'Tunai',
+        adminVal,
+        r.payment_admin || 'Tunai',
+        clearingVal,
+        totalVal,
+        r.officer_name || ''
+      ]);
+    });
+
+    var dataRange = sheet.getRange(5, 1, dataValues.length, 17);
+    dataRange.setValues(dataValues);
+
+    // Format Data Columns
+    sheet.getRange(5, 1, dataValues.length, 5).setHorizontalAlignment("center");
+    sheet.getRange(5, 6, dataValues.length, 2).setHorizontalAlignment("left");
+    sheet.getRange(5, 8, dataValues.length, 2).setHorizontalAlignment("center");
+    sheet.getRange(5, 10, dataValues.length, 1).setHorizontalAlignment("right").setNumberFormat("#,##0");
+    sheet.getRange(5, 11, dataValues.length, 1).setHorizontalAlignment("right").setNumberFormat('"Rp "#,##0');
+    sheet.getRange(5, 12, dataValues.length, 1).setHorizontalAlignment("left");
+    sheet.getRange(5, 13, dataValues.length, 1).setHorizontalAlignment("right").setNumberFormat('"Rp "#,##0');
+    sheet.getRange(5, 14, dataValues.length, 1).setHorizontalAlignment("left");
+    sheet.getRange(5, 15, dataValues.length, 2).setHorizontalAlignment("right").setNumberFormat('"Rp "#,##0');
+    sheet.getRange(5, 17, dataValues.length, 1).setHorizontalAlignment("left");
+  }
+
+  // Total Row at the end
+  var lastRowIdx = 5 + (rows ? rows.length : 0);
+  sheet.getRange(lastRowIdx, 1, 1, 9).merge().setValue("TOTAL KESELURUHAN")
+    .setFontWeight("bold").setBackground("#F3F4F6").setHorizontalAlignment("center");
+
+  sheet.getRange(lastRowIdx, 10).setValue(totalSheets).setFontWeight("bold").setBackground("#F3F4F6").setNumberFormat("#,##0").setHorizontalAlignment("right");
+  sheet.getRange(lastRowIdx, 11).setValue(totalSubtotal).setFontWeight("bold").setBackground("#F3F4F6").setNumberFormat('"Rp "#,##0').setHorizontalAlignment("right");
+  sheet.getRange(lastRowIdx, 12).setValue("").setBackground("#F3F4F6");
+  sheet.getRange(lastRowIdx, 13).setValue(totalAdmin).setFontWeight("bold").setBackground("#F3F4F6").setNumberFormat('"Rp "#,##0').setHorizontalAlignment("right");
+  sheet.getRange(lastRowIdx, 14).setValue("").setBackground("#F3F4F6");
+  sheet.getRange(lastRowIdx, 15).setValue(totalClearing).setFontWeight("bold").setBackground("#F3F4F6").setNumberFormat('"Rp "#,##0').setHorizontalAlignment("right");
+  sheet.getRange(lastRowIdx, 16).setValue(grandTotal).setFontWeight("bold").setBackground("#F3F4F6").setNumberFormat('"Rp "#,##0').setHorizontalAlignment("right");
+  sheet.getRange(lastRowIdx, 17).setValue("").setBackground("#F3F4F6");
 }</textarea>
       </div>
 
