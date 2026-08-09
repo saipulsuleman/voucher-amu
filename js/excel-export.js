@@ -186,7 +186,13 @@ const ExcelExport = {
     allRows.sort(sortRows);
     Object.keys(sheetsMap).forEach(k => sheetsMap[k].sort(sortRows));
 
-    // Build Excel XML Workbook String
+    // Native .xlsx Export via SheetJS (if available)
+    if (typeof XLSX !== 'undefined') {
+      this.exportToXLSXNative(allRows, sheetsMap, periodTitle, options);
+      return;
+    }
+
+    // Fallback: Build Excel XML Workbook String (.xls)
     const xmlWorkbook = this.buildXmlSpreadsheet(allRows, sheetsMap, periodTitle, options.mode);
     
     // Create download blob
@@ -963,6 +969,233 @@ const ExcelExport = {
   </Table>
  </Worksheet>`;
     return ws;
+  },
+
+  exportToXLSXNative(allRows, sheetsMap, periodTitle, options = { mode: 'merged' }) {
+    const wb = XLSX.utils.book_new();
+
+    const makeTableSheet = (sheetName, rows, titleSuffix) => {
+      const aoa = [
+        ["PT. ARBA MITRA USAHA GORONTALO (SPBU 74-961-4)"],
+        [`LAPORAN PENJUALAN VOUCHER - ${sheetName.toUpperCase()}${titleSuffix ? ' (' + titleSuffix + ')' : ''}`],
+        [`Sistem Otomasi Voucher & Nota Kwitansi | Periode: ${titleSuffix || 'Semua Periode'}`],
+        [],
+        ["No.", "No. Nota", "Tanggal", "Bulan", "Tahun", "Nama Instansi", "Pecahan", "Seri Awal", "Seri Akhir", "Lembar", "Subtotal Nominal", "Metode Pembayaran Voucher", "Admin", "Metode Pembayaran Admin", "Biaya Clearing", "Total", "Petugas / TTD"]
+      ];
+
+      let tSheets = 0, tSubtotal = 0, tAdmin = 0, tClearing = 0, gTotal = 0;
+      (rows || []).forEach((r, idx) => {
+        const sheetsVal = Number(r.sheets) || 0;
+        const subtotalVal = Number(r.subtotalNominal) || 0;
+        const adminVal = Number(r.adminFee) || 0;
+        const clearingVal = Number(r.clearingFee) || 0;
+        const totalVal = Number(r.totalAmount) || (subtotalVal + adminVal + clearingVal);
+
+        tSheets += sheetsVal;
+        tSubtotal += subtotalVal;
+        tAdmin += adminVal;
+        tClearing += clearingVal;
+        gTotal += totalVal;
+
+        aoa.push([
+          idx + 1,
+          r.notaNumber || '',
+          r.dateFormatted || '',
+          r.monthName || '',
+          r.yearStr || '',
+          r.customerName || '',
+          r.voucherLabel || '',
+          r.startSerial || '',
+          r.endSerial || '',
+          sheetsVal,
+          subtotalVal,
+          r.paymentVoucher || 'Tunai',
+          adminVal,
+          r.paymentAdmin || 'Tunai',
+          clearingVal,
+          totalVal,
+          r.officerName || ''
+        ]);
+      });
+
+      aoa.push([
+        "TOTAL KESELURUHAN", "", "", "", "", "", "", "", "",
+        tSheets, tSubtotal, "", tAdmin, "", tClearing, gTotal, ""
+      ]);
+
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 16 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 16 } },
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 16 } },
+        { s: { r: aoa.length - 1, c: 0 }, e: { r: aoa.length - 1, c: 8 } }
+      ];
+      ws['!cols'] = [
+        { wch: 6 }, { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 8 },
+        { wch: 24 }, { wch: 16 }, { wch: 12 }, { wch: 12 }, { wch: 10 },
+        { wch: 16 }, { wch: 15 }, { wch: 14 }, { wch: 15 }, { wch: 14 },
+        { wch: 16 }, { wch: 20 }
+      ];
+      return ws;
+    };
+
+    const makeIncomeStatementSheet = (sheetName, rows, titleSuffix) => {
+      let tVoucher = 0, tAdmin = 0, tClearing = 0;
+      rows.forEach(r => {
+        tVoucher += (r.subtotalNominal || 0);
+        tAdmin += (r.adminFee || 0);
+        tClearing += (r.clearingFee || 0);
+      });
+      const tPendapatan = tVoucher + tAdmin;
+      const labaBersih = tPendapatan - tClearing;
+
+      const aoa = [
+        ["PT. ARBA MITRA USAHA GORONTALO (SPBU 74-961-4)"],
+        [`LAPORAN LABA RUGI - ${titleSuffix}`],
+        [`Sistem Otomasi Voucher & Nota Kwitansi | Periode: ${titleSuffix || 'Semua Periode'}`],
+        [],
+        ["Keterangan", "Nominal (Rp)"],
+        ["PENDAPATAN", ""],
+        ["  Pendapatan Pokok Penjualan Voucher", tVoucher],
+        ["  Pendapatan Jasa Admin", tAdmin],
+        ["Total Pendapatan", tPendapatan],
+        ["", ""],
+        ["BEBAN (PENGELUARAN)", ""],
+        ["  Beban Administrasi Bank / Clearing", tClearing],
+        ["Total Beban", tClearing],
+        ["", ""],
+        ["LABA BERSIH", labaBersih]
+      ];
+
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 1 } },
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 1 } }
+      ];
+      ws['!cols'] = [{ wch: 38 }, { wch: 18 }];
+      return ws;
+    };
+
+    const makeCashFlowSheet = (sheetName, rows, titleSuffix) => {
+      let kasTunai = 0, bankTransfer = 0;
+      rows.forEach(r => {
+        const method = (r.paymentVoucher || 'Tunai').toLowerCase();
+        const bersih = (r.subtotalNominal || 0) + (r.adminFee || 0) - (r.clearingFee || 0);
+        if (method.includes('transfer') || method.includes('bank')) {
+          bankTransfer += bersih;
+        } else {
+          kasTunai += bersih;
+        }
+      });
+      const totalKas = kasTunai + bankTransfer;
+
+      const aoa = [
+        ["PT. ARBA MITRA USAHA GORONTALO (SPBU 74-961-4)"],
+        [`REKAPITULASI ARUS KAS - ${titleSuffix}`],
+        [`Sistem Otomasi Voucher & Nota Kwitansi | Periode: ${titleSuffix || 'Semua Periode'}`],
+        [],
+        ["Metode Pembayaran", "Total Penerimaan (Rp)"],
+        ["Kas Tunai", kasTunai],
+        ["Transfer Bank", bankTransfer],
+        ["TOTAL SALDO KAS & BANK", totalKas]
+      ];
+
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 1 } },
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 1 } }
+      ];
+      ws['!cols'] = [{ wch: 28 }, { wch: 22 }];
+      return ws;
+    };
+
+    const makeJournalSheet = (sheetName, rows, titleSuffix) => {
+      const aoa = [
+        ["PT. ARBA MITRA USAHA GORONTALO (SPBU 74-961-4)"],
+        [`JURNAL UMUM AKUNTANSI - ${titleSuffix}`],
+        [`Sistem Otomasi Voucher & Nota Kwitansi | Periode: ${titleSuffix || 'Semua Periode'}`],
+        [],
+        ["Tanggal", "No. Bukti / Nota", "Kode Akun", "Nama Akun", "Debit", "Kredit"]
+      ];
+
+      const txGroups = {};
+      rows.forEach(r => {
+        const key = `${r.dateFormatted}_${r.notaNumber}`;
+        if (!txGroups[key]) txGroups[key] = { date: r.dateFormatted, nota: r.notaNumber, items: [] };
+        txGroups[key].items.push(r);
+      });
+
+      let totalDebit = 0, totalKredit = 0;
+      for (const group of Object.values(txGroups)) {
+        let kreditVoucher = 0, kreditAdmin = 0, debitClearing = 0, pVoucher = '';
+        group.items.forEach(r => {
+          kreditVoucher += r.subtotalNominal || 0;
+          kreditAdmin += r.adminFee || 0;
+          debitClearing += r.clearingFee || 0;
+          pVoucher = r.paymentVoucher || 'Tunai';
+        });
+
+        const debitKas = (kreditVoucher + kreditAdmin) - debitClearing;
+        const isTransfer = pVoucher.toLowerCase().includes('transfer') || pVoucher.toLowerCase().includes('bank');
+        const namaKas = isTransfer ? 'Kas di Bank' : 'Kas di Tangan';
+        const kodeKas = isTransfer ? '1120' : '1110';
+
+        aoa.push([group.date, group.nota, kodeKas, namaKas, debitKas, 0]);
+        totalDebit += debitKas;
+
+        if (debitClearing > 0) {
+          aoa.push(["", "", "5110", "Beban Administrasi Bank / Clearing", debitClearing, 0]);
+          totalDebit += debitClearing;
+        }
+        if (kreditVoucher > 0) {
+          aoa.push(["", "", "4110", "  Pendapatan Penjualan Voucher", 0, kreditVoucher]);
+          totalKredit += kreditVoucher;
+        }
+        if (kreditAdmin > 0) {
+          aoa.push(["", "", "4120", "  Pendapatan Jasa Admin", 0, kreditAdmin]);
+          totalKredit += kreditAdmin;
+        }
+      }
+
+      aoa.push(["TOTAL KESELURUHAN", "", "", "", totalDebit, totalKredit]);
+
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } },
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 5 } },
+        { s: { r: aoa.length - 1, c: 0 }, e: { r: aoa.length - 1, c: 3 } }
+      ];
+      ws['!cols'] = [{ wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 32 }, { wch: 16 }, { wch: 16 }];
+      return ws;
+    };
+
+    if (options.mode === 'accounting_only') {
+      XLSX.utils.book_append_sheet(wb, makeIncomeStatementSheet("Laporan Laba Rugi", allRows, periodTitle), "Laporan Laba Rugi");
+      XLSX.utils.book_append_sheet(wb, makeCashFlowSheet("Rekapitulasi Arus Kas", allRows, periodTitle), "Rekapitulasi Arus Kas");
+      XLSX.utils.book_append_sheet(wb, makeJournalSheet("Jurnal Umum", allRows, periodTitle), "Jurnal Umum");
+    } else {
+      XLSX.utils.book_append_sheet(wb, makeTableSheet("REKAPITULASI TOTAL", allRows, periodTitle), "REKAPITULASI TOTAL");
+      XLSX.utils.book_append_sheet(wb, makeTableSheet("Voucher 25k", sheetsMap["V25"], "Pecahan 25.000"), "Voucher 25k");
+      XLSX.utils.book_append_sheet(wb, makeTableSheet("Voucher 50k", sheetsMap["V50"], "Pecahan 50.000"), "Voucher 50k");
+      XLSX.utils.book_append_sheet(wb, makeTableSheet("Voucher 100k", sheetsMap["V100"], "Pecahan 100.000"), "Voucher 100k");
+      XLSX.utils.book_append_sheet(wb, makeTableSheet("Voucher 200k", sheetsMap["V200"], "Pecahan 200.000"), "Voucher 200k");
+      XLSX.utils.book_append_sheet(wb, makeTableSheet("Voucher 300k", sheetsMap["V300"], "Pecahan 300.000"), "Voucher 300k");
+      XLSX.utils.book_append_sheet(wb, makeTableSheet("Voucher Manual", sheetsMap["MANUAL"], "Voucher Manual"), "Voucher Manual");
+
+      XLSX.utils.book_append_sheet(wb, makeIncomeStatementSheet("Laporan Laba Rugi", allRows, periodTitle), "Laporan Laba Rugi");
+      XLSX.utils.book_append_sheet(wb, makeCashFlowSheet("Rekapitulasi Arus Kas", allRows, periodTitle), "Rekapitulasi Arus Kas");
+      XLSX.utils.book_append_sheet(wb, makeJournalSheet("Jurnal Umum", allRows, periodTitle), "Jurnal Umum");
+    }
+
+    let fileName = `Laporan_Voucher_AMU_${periodTitle.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`;
+    if (options.mode === 'accounting_only') {
+      fileName = `Jurnal_Akuntansi_AMU_${periodTitle.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`;
+    }
+
+    XLSX.writeFile(wb, fileName);
   }
 
 };
