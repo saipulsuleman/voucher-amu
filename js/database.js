@@ -916,7 +916,11 @@ const DB = {
     if (res.success + res.skipped === res.total || res.success > 0) {
       let msg = `Berhasil mengunggah seluruh ${res.success} dari ${res.total} transaksi ke Supabase Cloud!`;
       if (res.missingCols && res.missingCols.length > 0) {
-        msg += `<br><small style="margin-top:6px; display:inline-block; color:#0369a1; line-height:1.4;">💡 Catatan: Kolom <code>${res.missingCols.join(', ')}</code> disesuaikan otomatis karena belum ada di database Supabase Anda. Anda dapat mengeklik tombol <b>📜 Skrip Update Schema SQL</b> untuk memperbarui skema Supabase Anda jika ingin menyimpan kolom tersebut.</small>`;
+        if (res.missingCols.includes('payment_voucher') || res.missingCols.includes('payment_admin')) {
+          msg += `<br><div style="margin-top:8px; padding:10px 14px; background:#fff7ed; border:1px solid #fdba74; border-radius:6px; color:#c2410c; font-weight:bold; font-size:0.85rem; line-height:1.4;">⚠️ PERHATIAN SANGAT PENTING:<br>Metode Pembayaran (Transfer/Tunai) TIDAK TERKIRIM ke Cloud karena kolom <code>${res.missingCols.join(', ')}</code> belum dibuat di Supabase SQL Editor.<br>👉 Silakan klik tombol <b>📜 Skrip Update Schema SQL</b> di bawah ini, salin skripnya, dan klik 'Run' di Supabase SQL Editor agar metode pembayaran tersimpan di database!</div>`;
+        } else {
+          msg += `<br><small style="margin-top:6px; display:inline-block; color:#0369a1; line-height:1.4;">💡 Catatan: Kolom <code>${res.missingCols.join(', ')}</code> disesuaikan otomatis karena belum ada di database Supabase Anda. Anda dapat mengeklik tombol <b>📜 Skrip Update Schema SQL</b> untuk memperbarui skema Supabase Anda.</small>`;
+        }
       }
       return {
         total: res.total,
@@ -1082,7 +1086,12 @@ const DB = {
       }
 
       this.notifyDataChanged('cloud-fetch');
-      return { success: true, count: rawTxs.length, newAdded: mergedCount, message: `Berhasil sinkronisasi ${rawTxs.length} transaksi dari Supabase!` };
+      const missingPaymentColsInCloud = rawTxs.length > 0 && (rawTxs[0].payment_voucher === undefined && rawTxs[0].payment_admin === undefined);
+      let successMsg = `Berhasil sinkronisasi ${rawTxs.length} transaksi dari Supabase!`;
+      if (missingPaymentColsInCloud) {
+        successMsg += `<br><div style="margin-top:8px; padding:10px 14px; background:#fff7ed; border:1px solid #fdba74; border-radius:6px; color:#c2410c; font-weight:bold; font-size:0.85rem; line-height:1.4;">⚠️ PERHATIAN: Tabel database Supabase Anda belum memiliki kolom <code>payment_voucher</code> & <code>payment_admin</code>.<br>Metode pembayaran ditarik sebagai default "Tunai".<br>👉 Harap jalankan <b>📜 Skrip Update Schema SQL</b> di Supabase SQL Editor, lalu Push dari perangkat utama agar metode pembayaran tersimpan di cloud.</div>`;
+      }
+      return { success: true, count: rawTxs.length, newAdded: mergedCount, message: successMsg };
     } catch (err) {
       return { success: false, message: `Error Sinkronisasi Cloud: ${err.message}` };
     }
