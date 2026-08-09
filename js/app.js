@@ -512,25 +512,61 @@ const App = {
 
     document.getElementById('btn-schema-supabase')?.addEventListener('click', () => {
       const sqlText = `-- ====================================================================\n` +
-        `-- SKRIP MIGRASI / UPDATE SCHEMA UNTUK DATABASE SUPABASE\n` +
-        `-- Jalankan skrip ini di Supabase SQL Editor jika ada kolom belum ada\n` +
+        `-- SKRIP MIGRASI / UPDATE SCHEMA & RLS POLICY SUPABASE\n` +
+        `-- Jalankan skrip ini di Supabase SQL Editor jika terjadi error PGRST204 / RLS 42501\n` +
         `-- ====================================================================\n` +
         `ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS payment_voucher TEXT DEFAULT 'Tunai';\n` +
         `ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS payment_admin TEXT DEFAULT 'Tunai';\n` +
         `ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS clearing_fee NUMERIC DEFAULT 0;\n` +
         `ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS void_reason TEXT;\n` +
         `ALTER TABLE public.transaction_items ADD COLUMN IF NOT EXISTS custom_price NUMERIC DEFAULT NULL;\n\n` +
+        `-- Enable Row Level Security (RLS)\n` +
+        `ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;\n` +
+        `ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;\n` +
+        `ALTER TABLE public.transaction_items ENABLE ROW LEVEL SECURITY;\n\n` +
+        `-- Drop existing restrictive policies\n` +
+        `DROP POLICY IF EXISTS "Allow auth read customers" ON public.customers;\n` +
+        `DROP POLICY IF EXISTS "Allow auth insert customers" ON public.customers;\n` +
+        `DROP POLICY IF EXISTS "Allow auth read transactions" ON public.transactions;\n` +
+        `DROP POLICY IF EXISTS "Allow auth insert transactions" ON public.transactions;\n` +
+        `DROP POLICY IF EXISTS "Allow auth update transactions" ON public.transactions;\n` +
+        `DROP POLICY IF EXISTS "Allow auth delete transactions" ON public.transactions;\n` +
+        `DROP POLICY IF EXISTS "Allow auth read transaction_items" ON public.transaction_items;\n` +
+        `DROP POLICY IF EXISTS "Allow auth insert transaction_items" ON public.transaction_items;\n` +
+        `DROP POLICY IF EXISTS "Allow auth update transaction_items" ON public.transaction_items;\n` +
+        `DROP POLICY IF EXISTS "Allow auth delete transaction_items" ON public.transaction_items;\n` +
+        `DROP POLICY IF EXISTS "Allow anon and auth read customers" ON public.customers;\n` +
+        `DROP POLICY IF EXISTS "Allow anon and auth insert customers" ON public.customers;\n` +
+        `DROP POLICY IF EXISTS "Allow anon and auth read transactions" ON public.transactions;\n` +
+        `DROP POLICY IF EXISTS "Allow anon and auth insert transactions" ON public.transactions;\n` +
+        `DROP POLICY IF EXISTS "Allow anon and auth update transactions" ON public.transactions;\n` +
+        `DROP POLICY IF EXISTS "Allow anon and auth delete transactions" ON public.transactions;\n` +
+        `DROP POLICY IF EXISTS "Allow anon and auth read transaction_items" ON public.transaction_items;\n` +
+        `DROP POLICY IF EXISTS "Allow anon and auth insert transaction_items" ON public.transaction_items;\n` +
+        `DROP POLICY IF EXISTS "Allow anon and auth update transaction_items" ON public.transaction_items;\n` +
+        `DROP POLICY IF EXISTS "Allow anon and auth delete transaction_items" ON public.transaction_items;\n\n` +
+        `-- Create open CRUD RLS policies for anon and authenticated roles\n` +
+        `CREATE POLICY "Allow anon and auth read customers" ON public.customers FOR SELECT TO anon, authenticated USING (true);\n` +
+        `CREATE POLICY "Allow anon and auth insert customers" ON public.customers FOR INSERT TO anon, authenticated WITH CHECK (true);\n\n` +
+        `CREATE POLICY "Allow anon and auth read transactions" ON public.transactions FOR SELECT TO anon, authenticated USING (true);\n` +
+        `CREATE POLICY "Allow anon and auth insert transactions" ON public.transactions FOR INSERT TO anon, authenticated WITH CHECK (true);\n` +
+        `CREATE POLICY "Allow anon and auth update transactions" ON public.transactions FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);\n` +
+        `CREATE POLICY "Allow anon and auth delete transactions" ON public.transactions FOR DELETE TO anon, authenticated USING (true);\n\n` +
+        `CREATE POLICY "Allow anon and auth read transaction_items" ON public.transaction_items FOR SELECT TO anon, authenticated USING (true);\n` +
+        `CREATE POLICY "Allow anon and auth insert transaction_items" ON public.transaction_items FOR INSERT TO anon, authenticated WITH CHECK (true);\n` +
+        `CREATE POLICY "Allow anon and auth update transaction_items" ON public.transaction_items FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);\n` +
+        `CREATE POLICY "Allow anon and auth delete transaction_items" ON public.transaction_items FOR DELETE TO anon, authenticated USING (true);\n\n` +
         `-- Reload cache schema PostgREST\n` +
         `NOTIFY pgrst, 'reload schema';`;
 
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(sqlText).then(() => {
-          alert("📋 Skrip Update Schema SQL berhasil disalin ke Clipboard!\n\nPetunjuk:\n1. Buka Dashboard Supabase (https://supabase.com/dashboard)\n2. Pilih proyek Anda -> SQL Editor\n3. Paste (Ctrl+V) skrip tersebut lalu klik 'Run'\n4. Kolom baru seperti 'payment_admin' akan langsung dibuat di database.");
+          alert("📋 Skrip Update Schema & RLS Policy SQL berhasil disalin ke Clipboard!\n\nPetunjuk:\n1. Buka Dashboard Supabase (https://supabase.com/dashboard)\n2. Pilih proyek Anda -> SQL Editor\n3. Paste (Ctrl+V) skrip tersebut lalu klik 'Run'\n4. Kolom & Kebijakan RLS akan otomatis diperbarui.");
         }).catch(() => {
-          prompt("Salin Skrip Update Schema SQL di bawah ini:", sqlText);
+          prompt("Salin Skrip Update Schema & RLS Policy SQL di bawah ini:", sqlText);
         });
       } else {
-        prompt("Salin Skrip Update Schema SQL di bawah ini:", sqlText);
+        prompt("Salin Skrip Update Schema & RLS Policy SQL di bawah ini:", sqlText);
       }
     });
 

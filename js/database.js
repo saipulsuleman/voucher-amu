@@ -778,6 +778,9 @@ const DB = {
             }
             retryCount++;
           } else {
+            if (errTxt.includes('42501') || errTxt.toLowerCase().includes('row-level security')) {
+              return { success: false, message: `Gagal upload header (RLS Policy Database): Kebijakan Row-Level Security Supabase menolak akses. Silakan klik tombol 'Skrip Update Schema SQL', salin skripnya, dan jalankan di Supabase SQL Editor.` };
+            }
             return { success: false, message: `Gagal upload header (HTTP ${resHeader.status}): ${errTxt}` };
           }
         }

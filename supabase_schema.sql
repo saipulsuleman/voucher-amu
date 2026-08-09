@@ -51,23 +51,45 @@ ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transaction_items ENABLE ROW LEVEL SECURITY;
 
--- NEW SECURE POLICIES: Only Authenticated Users can read/write
-CREATE POLICY "Allow auth read customers" ON public.customers FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Allow auth insert customers" ON public.customers FOR INSERT TO authenticated WITH CHECK (true);
+-- Drop existing policies if any
+DROP POLICY IF EXISTS "Allow auth read customers" ON public.customers;
+DROP POLICY IF EXISTS "Allow auth insert customers" ON public.customers;
+DROP POLICY IF EXISTS "Allow auth read transactions" ON public.transactions;
+DROP POLICY IF EXISTS "Allow auth insert transactions" ON public.transactions;
+DROP POLICY IF EXISTS "Allow auth update transactions" ON public.transactions;
+DROP POLICY IF EXISTS "Allow auth delete transactions" ON public.transactions;
+DROP POLICY IF EXISTS "Allow auth read transaction_items" ON public.transaction_items;
+DROP POLICY IF EXISTS "Allow auth insert transaction_items" ON public.transaction_items;
+DROP POLICY IF EXISTS "Allow auth update transaction_items" ON public.transaction_items;
+DROP POLICY IF EXISTS "Allow auth delete transaction_items" ON public.transaction_items;
+DROP POLICY IF EXISTS "Allow anon and auth read customers" ON public.customers;
+DROP POLICY IF EXISTS "Allow anon and auth insert customers" ON public.customers;
+DROP POLICY IF EXISTS "Allow anon and auth read transactions" ON public.transactions;
+DROP POLICY IF EXISTS "Allow anon and auth insert transactions" ON public.transactions;
+DROP POLICY IF EXISTS "Allow anon and auth update transactions" ON public.transactions;
+DROP POLICY IF EXISTS "Allow anon and auth delete transactions" ON public.transactions;
+DROP POLICY IF EXISTS "Allow anon and auth read transaction_items" ON public.transaction_items;
+DROP POLICY IF EXISTS "Allow anon and auth insert transaction_items" ON public.transaction_items;
+DROP POLICY IF EXISTS "Allow anon and auth update transaction_items" ON public.transaction_items;
+DROP POLICY IF EXISTS "Allow anon and auth delete transaction_items" ON public.transaction_items;
 
-CREATE POLICY "Allow auth read transactions" ON public.transactions FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Allow auth insert transactions" ON public.transactions FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Allow auth update transactions" ON public.transactions FOR UPDATE TO authenticated USING (true);
+-- POLICIES: Allow both anon and authenticated users full CRUD access
+CREATE POLICY "Allow anon and auth read customers" ON public.customers FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Allow anon and auth insert customers" ON public.customers FOR INSERT TO anon, authenticated WITH CHECK (true);
 
-CREATE POLICY "Allow auth read transaction_items" ON public.transaction_items FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Allow auth insert transaction_items" ON public.transaction_items FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Allow auth update transaction_items" ON public.transaction_items FOR UPDATE TO authenticated USING (true);
-CREATE POLICY "Allow auth delete transaction_items" ON public.transaction_items FOR DELETE TO authenticated USING (true);
-CREATE POLICY "Allow auth delete transactions" ON public.transactions FOR DELETE TO authenticated USING (true);
+CREATE POLICY "Allow anon and auth read transactions" ON public.transactions FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Allow anon and auth insert transactions" ON public.transactions FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Allow anon and auth update transactions" ON public.transactions FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow anon and auth delete transactions" ON public.transactions FOR DELETE TO anon, authenticated USING (true);
+
+CREATE POLICY "Allow anon and auth read transaction_items" ON public.transaction_items FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Allow anon and auth insert transaction_items" ON public.transaction_items FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Allow anon and auth update transaction_items" ON public.transaction_items FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow anon and auth delete transaction_items" ON public.transaction_items FOR DELETE TO anon, authenticated USING (true);
 
 -- ====================================================================
 -- SKRIP MIGRASI / UPDATE SCHEMA UNTUK DATABASE DENGAN SCHEMA LAMA
--- (Jalankan di Supabase SQL Editor jika terjadi error PGRST204)
+-- (Jalankan di Supabase SQL Editor jika terjadi error PGRST204 / RLS 42501)
 -- ====================================================================
 ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS payment_voucher TEXT DEFAULT 'Tunai';
 ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS payment_admin TEXT DEFAULT 'Tunai';
@@ -75,6 +97,6 @@ ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS clearing_fee NUMERIC DE
 ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS void_reason TEXT;
 ALTER TABLE public.transaction_items ADD COLUMN IF NOT EXISTS custom_price NUMERIC DEFAULT NULL;
 
--- Reload cache schema PostgREST agar kolom baru langsung dikenali
+-- Reload cache schema PostgREST agar kolom & kebijakan baru langsung dikenali
 NOTIFY pgrst, 'reload schema';
 
