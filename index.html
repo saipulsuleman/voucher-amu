@@ -717,8 +717,7 @@ function populateWorksheet(ss, sheetName, rows) {
     sheet = ss.insertSheet(sheetName);
   }
 
-  sheet.clearContents();
-  sheet.clearFormats();
+  sheet.clear();
 
   // Kop Surat (Rows 1-3)
   sheet.getRange("A1:Q1").merge().setValue("PT. ARBA MITRA USAHA GORONTALO (SPBU 74-961-4)")
@@ -741,7 +740,7 @@ function populateWorksheet(ss, sheetName, rows) {
     .setFontWeight("bold")
     .setHorizontalAlignment("center")
     .setVerticalAlignment("middle")
-    .setWrapText(true);
+    .setWrap(true);
   
   try { sheet.setFrozenRows(4); } catch(e) {}
 

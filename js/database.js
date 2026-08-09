@@ -1341,7 +1341,7 @@ const DB = {
       console.warn('Batch fetch sync failed, trying fallback:', err);
     }
 
-    if (typeof document !== 'undefined') {
+    if (!syncSuccess && typeof document !== 'undefined') {
       try {
         const iframeName = 'gsheet_batch_' + Date.now();
         const iframe = document.createElement('iframe');
