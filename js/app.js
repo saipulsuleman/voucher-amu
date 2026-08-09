@@ -2353,8 +2353,9 @@ const App = {
 
       // 3. Payment Method Filter
       if (state.paymentMethod !== 'ALL') {
-        const payV = tx.paymentVoucher || tx.payment_voucher || 'Tunai';
-        const payA = tx.paymentAdmin || tx.payment_admin || 'Tunai';
+        const normalized = DB.normalizeTxPaymentMethods(tx);
+        const payV = normalized.paymentVoucher;
+        const payA = normalized.paymentAdmin;
         if (payV !== state.paymentMethod && payA !== state.paymentMethod) return false;
       }
 
@@ -2427,8 +2428,9 @@ const App = {
       return `<div style="color:#94a3b8; padding:0.5rem; text-align:center;">Tidak ada rincian pecahan.</div>`;
     }
 
-    const payV = tx.paymentVoucher || tx.payment_voucher || 'Tunai';
-    const payA = tx.paymentAdmin || tx.payment_admin || 'Tunai';
+    const normalized = DB.normalizeTxPaymentMethods(tx);
+    const payV = normalized.paymentVoucher;
+    const payA = normalized.paymentAdmin;
     const totalClearing = tx.clearingFee || 0;
 
     let totalVoucherSub = 0;
@@ -2548,8 +2550,9 @@ const App = {
         ? `<span class="badge badge-void">VOID (Dibatalkan)</span>`
         : `<span class="badge badge-success">SUKSES</span>`;
 
-      const payV = tx.paymentVoucher || tx.payment_voucher || 'Tunai';
-      const payA = tx.paymentAdmin || tx.payment_admin || 'Tunai';
+      const normalized = DB.normalizeTxPaymentMethods(tx);
+      const payV = normalized.paymentVoucher;
+      const payA = normalized.paymentAdmin;
       const payBadge = (payV === payA)
         ? `<div style="font-size:0.75rem; color:#0284c7; font-weight:600; margin-top:2px;">💳 ${payV}</div>`
         : `<div style="font-size:0.75rem; color:#0369a1; font-weight:600; margin-top:2px;">💳 V: ${payV} | A: ${payA}</div>`;

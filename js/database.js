@@ -234,10 +234,23 @@ const DB = {
     return next;
   },
 
+  normalizeTxPaymentMethods(tx) {
+    if (!tx) return { paymentVoucher: 'Tunai', paymentAdmin: 'Tunai', payment_voucher: 'Tunai', payment_admin: 'Tunai' };
+    const pVoucher = tx.paymentVoucher || tx.payment_voucher || tx.paymentMethodVoucher || tx.metodePayVoucher || tx.paymentMethod || 'Tunai';
+    const pAdmin = tx.paymentAdmin || tx.payment_admin || tx.paymentMethodAdmin || tx.metodePayAdmin || tx.paymentMethod || 'Tunai';
+    
+    tx.paymentVoucher = pVoucher;
+    tx.paymentAdmin = pAdmin;
+    tx.payment_voucher = pVoucher;
+    tx.payment_admin = pAdmin;
+    return { paymentVoucher: pVoucher, paymentAdmin: pAdmin, payment_voucher: pVoucher, payment_admin: pAdmin };
+  },
+
   getTransactions() {
     this.init();
     try {
       let transactions = JSON.parse(this.getStorage().getItem(this.KEYS.TRANSACTIONS)) || [];
+      transactions.forEach(t => this.normalizeTxPaymentMethods(t));
       return transactions;
     } catch (e) {
       return [];
@@ -246,6 +259,7 @@ const DB = {
 
   saveTransaction(txData) {
     this.init();
+    this.normalizeTxPaymentMethods(txData);
     const transactions = this.getTransactions();
     
     let isEdit = false;
@@ -703,8 +717,9 @@ const DB = {
     }
 
     const force = !!(options && options.force);
-    const pVoucher = tx.paymentVoucher || tx.payment_voucher || 'Tunai';
-    const pAdmin = tx.paymentAdmin || tx.payment_admin || 'Tunai';
+    const normalized = this.normalizeTxPaymentMethods(tx);
+    const pVoucher = normalized.paymentVoucher;
+    const pAdmin = normalized.paymentAdmin;
     const grandTotal = Number(tx.grandTotal) || 0;
     const sig = `${tx.id}_${tx.updatedAt || ''}_${tx.status || 'SUKSES'}_${tx.customerName || ''}_${grandTotal}_${pVoucher}_${pAdmin}`;
 
@@ -974,6 +989,9 @@ const DB = {
         if (rawDateStr.includes('T')) rawDateStr = rawDateStr.split('T')[0];
         else if (rawDateStr.includes(' ')) rawDateStr = rawDateStr.split(' ')[0];
 
+        const rowPV = row.payment_voucher || row.paymentVoucher || row.payment_method_voucher || row.payment_method || row.paymentMethod || 'Tunai';
+        const rowPA = row.payment_admin || row.paymentAdmin || row.payment_method_admin || row.payment_method || row.paymentMethod || 'Tunai';
+
         const txObj = {
           id: row.id,
           notaNumber: isNaN(parseInt(row.nota_number, 10)) ? row.nota_number : parseInt(row.nota_number, 10),
@@ -986,8 +1004,10 @@ const DB = {
           clearingFee: Number(row.clearing_fee) || 0,
           grandTotal: Number(row.grand_total) || 0,
           terbilang: row.terbilang || '',
-          paymentVoucher: row.payment_voucher || 'Tunai',
-          paymentAdmin: row.payment_admin || 'Tunai',
+          paymentVoucher: rowPV,
+          paymentAdmin: rowPA,
+          payment_voucher: rowPV,
+          payment_admin: rowPA,
           status: row.status || 'SUKSES',
           voidReason: row.void_reason || null,
           createdAt: row.created_at,
@@ -1002,19 +1022,39 @@ const DB = {
             adminSubtotal: Number(it.admin_subtotal) || 0
           }))
         };
+        this.normalizeTxPaymentMethods(txObj);
 
         const cloudTime = row.updated_at ? new Date(row.updated_at).getTime() : (row.created_at ? new Date(row.created_at).getTime() : 0);
 
         const existingIdx = localTxs.findIndex(t => t.id === txObj.id);
         if (existingIdx !== -1) {
           const localTx = localTxs[existingIdx];
+          this.normalizeTxPaymentMethods(localTx);
           const localTime = localTx.updatedAt ? new Date(localTx.updatedAt).getTime() : (localTx.createdAt ? new Date(localTx.createdAt).getTime() : 0);
           
+          // Smart Merge Payment Method:
+          // Jika transaksi lokal memiliki metode bayar non-Tunai tetapi cloud mengembalikan default 'Tunai'
+          // (misal karena push lama tanpa kolom payment_voucher), pertahankan metode bayar lokal & re-sync ke cloud.
+          let reSyncNeeded = false;
+          if (txObj.paymentVoucher === 'Tunai' && localTx.paymentVoucher && localTx.paymentVoucher !== 'Tunai') {
+            txObj.paymentVoucher = localTx.paymentVoucher;
+            txObj.payment_voucher = localTx.paymentVoucher;
+            reSyncNeeded = true;
+          }
+          if (txObj.paymentAdmin === 'Tunai' && localTx.paymentAdmin && localTx.paymentAdmin !== 'Tunai') {
+            txObj.paymentAdmin = localTx.paymentAdmin;
+            txObj.payment_admin = localTx.paymentAdmin;
+            reSyncNeeded = true;
+          }
+
           if (localTime > cloudTime) {
-            // Local record is newer than cloud record (e.g. freshly edited locally). Preserve local edits & sync back to cloud.
+            // Local record is newer than cloud record. Preserve local edits & sync back to cloud.
             this.syncSupabaseTransaction(localTx);
           } else {
             localTxs[existingIdx] = txObj;
+            if (reSyncNeeded) {
+              this.syncSupabaseTransaction(txObj, { force: true });
+            }
           }
         } else {
           localTxs.push(txObj);
