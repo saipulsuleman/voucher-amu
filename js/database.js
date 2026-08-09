@@ -1172,11 +1172,6 @@ const DB = {
 
       if (payloadRows.length === 0) return true;
 
-
-
-      // BULLETPROOF DUAL-DELIVERY TO GOOGLE APPS SCRIPT
-      // Delivery 1: Direct fetch POST with text/plain (CORS safelisted, payload in e.postData.contents)
-      let syncSuccess = false;
       const payloadObj = {
         action: 'upsert',
         tx_id: tx.id || '',
@@ -1184,6 +1179,9 @@ const DB = {
       };
       const jsonStr = JSON.stringify(payloadObj);
 
+      let syncSuccess = false;
+
+      // Primary Delivery: fetch POST with text/plain (CORS safelisted, received in e.postData.contents)
       try {
         await fetch(webhookUrl, {
           method: 'POST',
@@ -1193,37 +1191,40 @@ const DB = {
         });
         syncSuccess = true;
       } catch (err) {
-        console.warn('Fetch sync notice:', err);
+        console.warn('Fetch sync failed, trying hidden form fallback:', err);
       }
 
-      // Delivery 2: Hidden Form POST (Payload in e.parameter.payload)
-      try {
-        const iframeName = 'gsheet_sync_' + Date.now();
-        const iframe = document.createElement('iframe');
-        iframe.name = iframeName;
-        iframe.style.display = 'none';
-        document.body.appendChild(iframe);
+      // Secondary Fallback Delivery: Hidden Form POST (Only if fetch fails)
+      if (!syncSuccess && typeof document !== 'undefined') {
+        try {
+          const iframeName = 'gsheet_sync_' + Date.now();
+          const iframe = document.createElement('iframe');
+          iframe.name = iframeName;
+          iframe.style.display = 'none';
+          document.body.appendChild(iframe);
 
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = webhookUrl;
-        form.target = iframeName;
-        form.style.display = 'none';
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = webhookUrl;
+          form.target = iframeName;
+          form.style.display = 'none';
 
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'payload';
-        input.value = jsonStr;
-        form.appendChild(input);
-        document.body.appendChild(form);
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = 'payload';
+          input.value = jsonStr;
+          form.appendChild(input);
+          document.body.appendChild(form);
 
-        form.submit();
-        setTimeout(() => {
-          try { document.body.removeChild(iframe); } catch(e) {}
-          try { document.body.removeChild(form); } catch(e) {}
-        }, 3000);
-      } catch(formErr) {
-        console.warn('Form submit notice:', formErr);
+          form.submit();
+          syncSuccess = true;
+          setTimeout(() => {
+            try { document.body.removeChild(iframe); } catch(e) {}
+            try { document.body.removeChild(form); } catch(e) {}
+          }, 3000);
+        } catch(formErr) {
+          console.warn('Form submit fallback failed:', formErr);
+        }
       }
 
       if (syncSuccess) {

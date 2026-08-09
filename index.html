@@ -670,9 +670,14 @@ function handleRequest(e) {
 
     for (var txId in txGroups) {
       var incomingTxRows = txGroups[txId];
+      var incomingTxIdStr = String(txId).trim();
+      var incomingNotaStr = incomingTxRows[0] && incomingTxRows[0].nota_number != null ? String(incomingTxRows[0].nota_number).trim() : '';
+
       var matchingSheetRowIndices = [];
       for (var i = 0; i < existingData.length; i++) {
-        if (String(existingData[i][0]) === String(txId) || (existingData[i][2] && String(existingData[i][2]) === String(incomingTxRows[0].nota_number))) {
+        var sheetTxIdStr = String(existingData[i][0] || '').trim();
+        var sheetNotaStr = String(existingData[i][2] || '').trim();
+        if ((incomingTxIdStr && sheetTxIdStr === incomingTxIdStr) || (incomingNotaStr && sheetNotaStr === incomingNotaStr)) {
           matchingSheetRowIndices.push(i + 5);
         }
       }
