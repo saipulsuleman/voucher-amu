@@ -869,7 +869,7 @@ const App = {
 
     if (voucherCode === 'MANUAL') {
       quantity = 1;
-      if (!endSerial) endSerial = startSerial;
+      endSerial = startSerial;
     } else {
       // Default quantity to 40 if missing and startSerial exists
       if (!quantity && startSerial) {
@@ -1000,6 +1000,8 @@ const App = {
         inputEnd.style.color = '#1e293b';
         inputEnd.style.cursor = 'not-allowed';
         inputEnd.title = '🔒 Seri Akhir Terkunci Otomatis (Voucher Manual)';
+        rowObj.endSerial = rowObj.startSerial;
+        inputEnd.value = rowObj.startSerial;
 
         inputQty.readOnly = true;
         inputQty.style.backgroundColor = '#f1f5f9';
@@ -1086,7 +1088,12 @@ const App = {
     // BI-DIRECTIONAL MATH: When Start or End Serial changes -> Calculate Quantity
     inputStart.addEventListener('input', (e) => {
       rowObj.startSerial = e.target.value.trim();
-      if (rowObj.startSerial && rowObj.endSerial) {
+      if (rowObj.voucherCode === 'MANUAL') {
+        rowObj.quantity = 1;
+        inputQty.value = 1;
+        rowObj.endSerial = rowObj.startSerial;
+        inputEnd.value = rowObj.startSerial;
+      } else if (rowObj.startSerial && rowObj.endSerial) {
         const qty = SerialCalc.calcQuantity(rowObj.startSerial, rowObj.endSerial);
         if (qty > 0) {
           rowObj.quantity = qty;
@@ -1100,12 +1107,19 @@ const App = {
     });
 
     inputEnd.addEventListener('input', (e) => {
-      rowObj.endSerial = e.target.value.trim();
-      if (rowObj.startSerial && rowObj.endSerial) {
-        const qty = SerialCalc.calcQuantity(rowObj.startSerial, rowObj.endSerial);
-        if (qty > 0) {
-          rowObj.quantity = qty;
-          inputQty.value = qty;
+      if (rowObj.voucherCode === 'MANUAL') {
+        rowObj.quantity = 1;
+        inputQty.value = 1;
+        rowObj.endSerial = rowObj.startSerial;
+        inputEnd.value = rowObj.startSerial;
+      } else {
+        rowObj.endSerial = e.target.value.trim();
+        if (rowObj.startSerial && rowObj.endSerial) {
+          const qty = SerialCalc.calcQuantity(rowObj.startSerial, rowObj.endSerial);
+          if (qty > 0) {
+            rowObj.quantity = qty;
+            inputQty.value = qty;
+          }
         }
       }
       this.recalculateTotal();
@@ -1113,10 +1127,17 @@ const App = {
 
     // BI-DIRECTIONAL MATH: When Quantity changes -> Calculate End Serial
     inputQty.addEventListener('input', (e) => {
-      rowObj.quantity = parseInt(e.target.value, 10) || 0;
-      if (rowObj.startSerial && rowObj.quantity > 0) {
-        rowObj.endSerial = SerialCalc.calcEndSerial(rowObj.startSerial, rowObj.quantity);
-        inputEnd.value = rowObj.endSerial;
+      if (rowObj.voucherCode === 'MANUAL') {
+        rowObj.quantity = 1;
+        inputQty.value = 1;
+        rowObj.endSerial = rowObj.startSerial;
+        inputEnd.value = rowObj.startSerial;
+      } else {
+        rowObj.quantity = parseInt(e.target.value, 10) || 0;
+        if (rowObj.startSerial && rowObj.quantity > 0) {
+          rowObj.endSerial = SerialCalc.calcEndSerial(rowObj.startSerial, rowObj.quantity);
+          inputEnd.value = rowObj.endSerial;
+        }
       }
       this.recalculateTotal();
     });
