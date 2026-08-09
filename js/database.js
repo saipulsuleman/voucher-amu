@@ -1253,9 +1253,9 @@ const DB = {
     const allSignatures = [];
 
     sortedTxs.forEach((tx) => {
-      const pVoucher = tx.paymentMethodVoucher || tx.paymentMethod || 'Tunai';
-      const pAdmin = tx.paymentMethodAdmin || tx.paymentMethod || 'Tunai';
-      const dateInfo = this.formatDateInfo(tx.transactionDate || tx.date);
+      const pVoucher = tx.paymentMethodVoucher || tx.paymentMethod || tx.paymentVoucher || tx.payment_voucher || 'Tunai';
+      const pAdmin = tx.paymentMethodAdmin || tx.paymentMethod || tx.paymentAdmin || tx.payment_admin || 'Tunai';
+      const dateInfo = this.parseDateFields(tx.transactionDate || tx.date || tx.createdAt);
       const officer = tx.officerName || 'Saipul Karim Suleman';
 
       if (tx.items && Array.isArray(tx.items) && tx.items.length > 0) {
