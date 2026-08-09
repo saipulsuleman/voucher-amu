@@ -507,6 +507,30 @@ const App = {
       this.renderHistoryTable();
     });
 
+    document.getElementById('btn-schema-supabase')?.addEventListener('click', () => {
+      const sqlText = `-- ====================================================================\n` +
+        `-- SKRIP MIGRASI / UPDATE SCHEMA UNTUK DATABASE SUPABASE\n` +
+        `-- Jalankan skrip ini di Supabase SQL Editor jika ada kolom belum ada\n` +
+        `-- ====================================================================\n` +
+        `ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS payment_voucher TEXT DEFAULT 'Tunai';\n` +
+        `ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS payment_admin TEXT DEFAULT 'Tunai';\n` +
+        `ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS clearing_fee NUMERIC DEFAULT 0;\n` +
+        `ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS void_reason TEXT;\n` +
+        `ALTER TABLE public.transaction_items ADD COLUMN IF NOT EXISTS custom_price NUMERIC DEFAULT NULL;\n\n` +
+        `-- Reload cache schema PostgREST\n` +
+        `NOTIFY pgrst, 'reload schema';`;
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(sqlText).then(() => {
+          alert("📋 Skrip Update Schema SQL berhasil disalin ke Clipboard!\n\nPetunjuk:\n1. Buka Dashboard Supabase (https://supabase.com/dashboard)\n2. Pilih proyek Anda -> SQL Editor\n3. Paste (Ctrl+V) skrip tersebut lalu klik 'Run'\n4. Kolom baru seperti 'payment_admin' akan langsung dibuat di database.");
+        }).catch(() => {
+          prompt("Salin Skrip Update Schema SQL di bawah ini:", sqlText);
+        });
+      } else {
+        prompt("Salin Skrip Update Schema SQL di bawah ini:", sqlText);
+      }
+    });
+
     // Google Sheets Sync Listeners
     document.getElementById('btn-sync-gsheet')?.addEventListener('click', async () => {
       const btn = document.getElementById('btn-sync-gsheet');

@@ -690,6 +690,8 @@ const DB = {
       return { success: true, skipped: true };
     }
 
+    const missingColsTracked = [];
+
     try {
       const endpoint = `${cfg.url}/rest/v1/transactions`;
       if (typeof fetch !== 'undefined') {
@@ -712,24 +714,41 @@ const DB = {
           updated_at: tx.updatedAt || tx.createdAt || new Date().toISOString()
         };
 
-        let resHeader = await fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': cfg.key,
-            'Authorization': `Bearer ${this.getSupabaseSession()?.access_token || cfg.key}`,
-            'Prefer': 'resolution=merge-duplicates'
-          },
-          body: JSON.stringify(headerRow)
-        });
+        let retryCount = 0;
+        let resHeader;
+        while (retryCount <= 5) {
+          resHeader = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': cfg.key,
+              'Authorization': `Bearer ${this.getSupabaseSession()?.access_token || cfg.key}`,
+              'Prefer': 'resolution=merge-duplicates'
+            },
+            body: JSON.stringify(headerRow)
+          });
 
-        if (!resHeader.ok) {
+          if (resHeader.ok) break;
+
           const errTxt = await resHeader.text();
-          return { success: false, message: `Gagal upload header (HTTP ${resHeader.status}): ${errTxt}` };
+          const match = errTxt.match(/Could not find the ['"]([^'"]+)['"] column/i);
+          if (errTxt.includes('PGRST204') && match && match[1] && (match[1] in headerRow)) {
+            const missingCol = match[1];
+            delete headerRow[missingCol];
+            if (!missingColsTracked.includes(missingCol)) {
+              missingColsTracked.push(missingCol);
+            }
+            retryCount++;
+          } else {
+            return { success: false, message: `Gagal upload header (HTTP ${resHeader.status}): ${errTxt}` };
+          }
+        }
+
+        if (!resHeader || !resHeader.ok) {
+          return { success: false, message: `Gagal upload header setelah penyesuaian skema.` };
         }
 
         if (tx.items && Array.isArray(tx.items) && tx.items.length > 0) {
-          // Clean up any existing transaction items for this transaction before upserting updated items
           try {
             await fetch(`${cfg.url}/rest/v1/transaction_items?transaction_id=eq.${tx.id}`, {
               method: 'DELETE',
@@ -742,7 +761,7 @@ const DB = {
             console.warn("Clean old items note:", delErr);
           }
 
-          const itemRows = tx.items.map(item => ({
+          let itemRows = tx.items.map(item => ({
             transaction_id: tx.id,
             voucher_code: (item.voucherCode || '').toUpperCase(),
             serial_start: String(item.startSerial || ''),
@@ -753,24 +772,47 @@ const DB = {
             custom_price: item.customPrice !== undefined ? item.customPrice : null
           }));
 
-          const resItems = await fetch(`${cfg.url}/rest/v1/transaction_items`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': cfg.key,
-              'Authorization': `Bearer ${this.getSupabaseSession()?.access_token || cfg.key}`,
-              'Prefer': 'resolution=merge-duplicates'
-            },
-            body: JSON.stringify(itemRows)
-          });
+          let itemRetryCount = 0;
+          let resItems;
+          while (itemRetryCount <= 5) {
+            resItems = await fetch(`${cfg.url}/rest/v1/transaction_items`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': cfg.key,
+                'Authorization': `Bearer ${this.getSupabaseSession()?.access_token || cfg.key}`,
+                'Prefer': 'resolution=merge-duplicates'
+              },
+              body: JSON.stringify(itemRows)
+            });
 
-          if (!resItems.ok) {
+            if (resItems.ok) break;
+
             const errItems = await resItems.text();
+            const matchItem = errItems.match(/Could not find the ['"]([^'"]+)['"] column/i);
+            if (errItems.includes('PGRST204') && matchItem && matchItem[1]) {
+              const missingCol = matchItem[1];
+              let colRemoved = false;
+              itemRows.forEach(row => {
+                if (missingCol in row) {
+                  delete row[missingCol];
+                  colRemoved = true;
+                }
+              });
+              if (colRemoved) {
+                if (!missingColsTracked.includes(missingCol)) {
+                  missingColsTracked.push(missingCol);
+                }
+                itemRetryCount++;
+                continue;
+              }
+            }
             return { success: false, message: `Gagal upload rincian kupon (HTTP ${resItems.status}): ${errItems}` };
           }
         }
+
         this.markSupabaseTxSynced(sig);
-        return { success: true };
+        return { success: true, missingCols: missingColsTracked };
       }
       return { success: false, message: 'Runtime environment does not support fetch.' };
     } catch (e) {
@@ -781,7 +823,7 @@ const DB = {
 
   async syncAllToSupabase(progressCallback, options = {}) {
     const transactions = this.getTransactions();
-    if (!transactions || transactions.length === 0) return { total: 0, success: 0, skipped: 0 };
+    if (!transactions || transactions.length === 0) return { total: 0, success: 0, skipped: 0, missingCols: [] };
 
     if (options && options.resetCache) {
       this.clearSyncedSupabaseCache();
@@ -789,32 +831,67 @@ const DB = {
 
     let successCount = 0;
     let skippedCount = 0;
+    let lastError = null;
+    const allMissingCols = new Set();
     const sortedTxs = [...transactions].reverse();
 
     for (let i = 0; i < sortedTxs.length; i++) {
       const tx = sortedTxs[i];
       const res = await this.syncSupabaseTransaction(tx, { force: options.force !== false });
       if (res && res.success) {
-        if (res.skipped) skippedCount++;
-        else successCount++;
+        if (res.skipped) {
+          skippedCount++;
+        } else {
+          successCount++;
+        }
+        if (res.missingCols && Array.isArray(res.missingCols)) {
+          res.missingCols.forEach(c => allMissingCols.add(c));
+        }
+      } else if (res && res.message) {
+        lastError = res.message;
       }
       if (typeof progressCallback === 'function') {
         progressCallback(i + 1, sortedTxs.length);
       }
       await new Promise(r => setTimeout(r, 60));
     }
-    return { total: sortedTxs.length, success: successCount, skipped: skippedCount };
+    return {
+      total: sortedTxs.length,
+      success: successCount,
+      skipped: skippedCount,
+      lastError,
+      missingCols: Array.from(allMissingCols)
+    };
   },
 
   async uploadAllToSupabase(progressCallback) {
+    const transactions = this.getTransactions();
+    if (!transactions || transactions.length === 0) {
+      return { total: 0, success: 0, message: 'Tidak ada data transaksi lokal untuk diunggah.' };
+    }
+
     const res = await this.syncAllToSupabase(progressCallback, { force: true, resetCache: true });
-    return {
-      success: res.success,
-      total: res.total,
-      skipped: res.skipped,
-      message: `Sync Supabase Cloud Selesai! (${res.success} berhasil di-upsert, ${res.skipped} dilewati, dari total ${res.total} transaksi)`
-    };
+
+    if (res.success + res.skipped === res.total || res.success > 0) {
+      let msg = `Berhasil mengunggah seluruh ${res.success} dari ${res.total} transaksi ke Supabase Cloud!`;
+      if (res.missingCols && res.missingCols.length > 0) {
+        msg += `<br><small style="margin-top:6px; display:inline-block; color:#0369a1; line-height:1.4;">💡 Catatan: Kolom <code>${res.missingCols.join(', ')}</code> disesuaikan otomatis karena belum ada di database Supabase Anda. Anda dapat mengeklik tombol <b>📜 Skrip Update Schema SQL</b> untuk memperbarui skema Supabase Anda jika ingin menyimpan kolom tersebut.</small>`;
+      }
+      return {
+        total: res.total,
+        success: res.success,
+        skipped: res.skipped,
+        message: msg
+      };
+    } else {
+      return {
+        total: res.total,
+        success: res.success,
+        message: `Gagal/Parsial: Terunggah ${res.success} dari ${res.total} transaksi. Error: ${res.lastError || 'HTTP Error'}`
+      };
+    }
   },
+
 
   async fetchSupabaseTransactions() {
     const cfg = this.getSupabaseConfig();
@@ -945,35 +1022,6 @@ const DB = {
     }
   },
 
-  async uploadAllToSupabase(progressCallback) {
-    const transactions = this.getTransactions();
-    if (!transactions || transactions.length === 0) {
-      return { total: 0, success: 0, message: 'Tidak ada data transaksi lokal untuk diunggah.' };
-    }
-
-    let successCount = 0;
-    let lastError = null;
-
-    for (let i = 0; i < transactions.length; i++) {
-      const tx = transactions[i];
-      const res = await this.syncSupabaseTransaction(tx);
-      if (res && res.success) {
-        successCount++;
-      } else if (res && res.message) {
-        lastError = res.message;
-      }
-      if (typeof progressCallback === 'function') {
-        progressCallback(i + 1, transactions.length);
-      }
-      await new Promise(r => setTimeout(r, 100));
-    }
-
-    if (successCount === transactions.length) {
-      return { total: transactions.length, success: successCount, message: `Berhasil mengunggah seluruh ${successCount} dari ${transactions.length} transaksi ke Supabase Cloud!` };
-    } else {
-      return { total: transactions.length, success: successCount, message: `Gagal/Parsial: Terunggah ${successCount} dari ${transactions.length} transaksi. Error: ${lastError || 'HTTP Error'}` };
-    }
-  },
 
   async syncSupabaseCustomer(customerName) {
     const cfg = this.getSupabaseConfig();

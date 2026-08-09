@@ -65,3 +65,16 @@ CREATE POLICY "Allow auth update transaction_items" ON public.transaction_items 
 CREATE POLICY "Allow auth delete transaction_items" ON public.transaction_items FOR DELETE TO authenticated USING (true);
 CREATE POLICY "Allow auth delete transactions" ON public.transactions FOR DELETE TO authenticated USING (true);
 
+-- ====================================================================
+-- SKRIP MIGRASI / UPDATE SCHEMA UNTUK DATABASE DENGAN SCHEMA LAMA
+-- (Jalankan di Supabase SQL Editor jika terjadi error PGRST204)
+-- ====================================================================
+ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS payment_voucher TEXT DEFAULT 'Tunai';
+ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS payment_admin TEXT DEFAULT 'Tunai';
+ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS clearing_fee NUMERIC DEFAULT 0;
+ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS void_reason TEXT;
+ALTER TABLE public.transaction_items ADD COLUMN IF NOT EXISTS custom_price NUMERIC DEFAULT NULL;
+
+-- Reload cache schema PostgREST agar kolom baru langsung dikenali
+NOTIFY pgrst, 'reload schema';
+
