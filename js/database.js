@@ -14,6 +14,10 @@ const DB = {
   },
 
   DEFAULT_GOOGLE_SHEETS_URL: 'https://script.google.com/macros/s/AKfycbwhCtBXO9Kw5hkAN6ecLtXGXrtJJRnBtXMqFP4nJQ2VdIRHNMsUJqniRNcsuMqnwT5A/exec',
+  DEFAULT_SUPABASE_CONFIG: {
+    url: 'https://aswankejifjsucrmvtxh.supabase.co',
+    key: ''
+  },
 
   DEFAULT_CUSTOMERS: [
     "BAPEDA",
@@ -136,6 +140,9 @@ const DB = {
     }
     if (!storage.getItem(this.KEYS.GOOGLE_SHEETS_URL)) {
       storage.setItem(this.KEYS.GOOGLE_SHEETS_URL, this.DEFAULT_GOOGLE_SHEETS_URL);
+    }
+    if (!storage.getItem(this.KEYS.SUPABASE_CONFIG) && this.DEFAULT_SUPABASE_CONFIG) {
+      storage.setItem(this.KEYS.SUPABASE_CONFIG, JSON.stringify(this.DEFAULT_SUPABASE_CONFIG));
     }
     if (!storage.getItem(this.KEYS.LAST_NOTA_NO)) {
       storage.setItem(this.KEYS.LAST_NOTA_NO, '35');
@@ -596,10 +603,26 @@ const DB = {
 
   getSupabaseConfig() {
     try {
-      return JSON.parse(this.getStorage().getItem(this.KEYS.SUPABASE_CONFIG));
-    } catch (e) {
-      return null;
+      const stored = JSON.parse(this.getStorage().getItem(this.KEYS.SUPABASE_CONFIG));
+      if (stored && stored.url && stored.key) return stored;
+      if (stored && stored.key) {
+        return {
+          url: stored.url || (this.DEFAULT_SUPABASE_CONFIG ? this.DEFAULT_SUPABASE_CONFIG.url : ''),
+          key: stored.key
+        };
+      }
+      if (stored && stored.url) {
+        return {
+          url: stored.url,
+          key: stored.key || (this.DEFAULT_SUPABASE_CONFIG ? this.DEFAULT_SUPABASE_CONFIG.key : '')
+        };
+      }
+    } catch (e) {}
+
+    if (this.DEFAULT_SUPABASE_CONFIG && this.DEFAULT_SUPABASE_CONFIG.url) {
+      return this.DEFAULT_SUPABASE_CONFIG;
     }
+    return null;
   },
 
   async testSupabaseConnection(customUrl = null, customKey = null) {

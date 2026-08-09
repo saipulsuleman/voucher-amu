@@ -85,9 +85,9 @@ const App = {
     this.checkSessionStatus();
 
     const cfg = DB.getSupabaseConfig();
-    if (cfg && cfg.url && cfg.key) {
+    if (cfg && cfg.url) {
       await this.autoSyncFromSupabase();
-      DB.initRealtimeSubscription();
+      if (cfg.key) DB.initRealtimeSubscription();
     }
   },
 
@@ -199,6 +199,7 @@ const App = {
         document.getElementById('login-email').value = '';
         document.getElementById('login-password').value = '';
         this.checkSessionStatus();
+        await this.autoSyncFromSupabase();
       } else {
         if (errMsg) {
           errMsg.style.display = 'block';
@@ -394,10 +395,12 @@ const App = {
 
 
     // Supabase Settings Save & Test Connection
-    document.getElementById('btn-save-supabase')?.addEventListener('click', () => {
+    document.getElementById('btn-save-supabase')?.addEventListener('click', async () => {
       const url = document.getElementById('sb-url').value.trim();
       const key = document.getElementById('sb-key').value.trim();
       DB.saveSupabaseConfig(url, key);
+      this.checkSessionStatus();
+      await this.autoSyncFromSupabase();
       alert("Pengaturan Supabase Cloud tersimpan!");
     });
 
