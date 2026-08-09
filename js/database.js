@@ -310,6 +310,9 @@ const DB = {
         }
       }
       this.getStorage().setItem(this.KEYS.LAST_NOTA_NO, String(maxNota));
+      this.syncGoogleSheetsTransaction({ id: txId }).catch(err => {
+        console.warn("Google Sheets Delete Sync Note:", err);
+      });
       this.notifyDataChanged('delete');
     }
   },
@@ -1110,7 +1113,7 @@ const DB = {
       this.clearSyncedGSheetsCache();
     }
 
-    const sortedTxs = [...transactions].reverse();
+    const sortedTxs = [...transactions].filter(t => t.status !== 'VOID' && t.status !== 'DIBATALKAN').reverse();
     const allPayloadRows = [];
     const allSignatures = [];
 
