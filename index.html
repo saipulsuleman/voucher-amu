@@ -593,17 +593,17 @@
       </div>
       
       <ol style="margin-left: 1.25rem; color: #334155; line-height: 1.6; font-size: 0.95rem;">
-        <li>Buka <a href="https://sheets.new" target="_blank" style="color: #0284c7; font-weight: 600;">sheets.new</a> untuk membuat Google Sheet baru di Drive Anda.</li>
-        <li>Buka menu <b>Ekstensi -> Apps Script</b>.</li>
+        <li>Buka Google Sheet Anda.</li>
+        <li>Buka menu <b>Ekstensi -&gt; Apps Script</b> (<i>wajib dari dalam Google Sheet agar script terikat langsung ke Sheet Anda</i>).</li>
         <li>Hapus seluruh kode default di <code>Code.gs</code>, lalu salin dan tempelkan skrip di bawah ini.</li>
-        <li>Klik tombol <b>Terapkan (Deploy) -> Penerapan Baru (New Deployment)</b>.</li>
+        <li>Klik tombol <b>Terapkan (Deploy) -&gt; Penerapan Baru (New Deployment)</b>.</li>
         <li>Pilih jenis: <b>Aplikasi Web (Web App)</b>, Pengontrol: <b>Saya (Me)</b>, Akses: <b>Siapa saja (Anyone)</b>.</li>
-        <li>Klik <b>Terapkan</b>, izinkan akses Google Account jika diminta, lalu salin <b>URL Web App</b> yang dihasilkan ke dalam form pengaturan aplikasi ini.</li>
+        <li>Klik <b>Terapkan</b>, izinkan akses Google Account jika diminta, lalu salin <b>URL Web App</b> yang dihasilkan ke dalam form di bawah.</li>
       </ol>
 
       <div style="margin-top: 1rem; position: relative;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-          <label style="font-weight: 600; font-size: 0.85rem; color: #475569;">Skrip Apps Script (Code.gs)</label>
+          <label style="font-weight: 600; font-size: 0.85rem; color: #475569;">Skrip Apps Script (Code.gs) - Tanpa Kop Surat</label>
           <button id="btn-copy-codegs" class="btn btn-sm" style="background: #0284c7; color: white; border: none;">📋 Salin Skrip Code.gs</button>
         </div>
         <textarea id="codegs-textarea" readonly style="width: 100%; height: 260px; font-family: monospace; font-size: 0.8rem; background: #0f172a; color: #38bdf8; padding: 0.75rem; border-radius: 6px; border: none; resize: vertical;">
@@ -621,19 +621,14 @@ function handleRequest(e) {
 
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    if (!ss) return responseJSON({ status: 'error', message: 'No active spreadsheet found' });
+    if (!ss) return responseJSON({ status: 'error', message: 'No active spreadsheet found. Pastikan Apps Script dibuka dari menu Ekstensi -> Apps Script di Google Sheet Anda!' });
     var sheet = ss.getActiveSheet() || ss.getSheets()[0];
-    ensureGridSize(sheet);
     ensureHeaders(sheet);
 
     var rawContent = null;
-    // Priority 1: e.parameter.payload — works for GET params AND POST form fields
-    // Google auto-decodes both URL params and form fields into e.parameter
     if (e && e.parameter && e.parameter.payload) {
       rawContent = e.parameter.payload;
-    }
-    // Priority 2: e.postData.contents — only for raw JSON POST body (NOT form-encoded)
-    else if (e && e.postData && e.postData.contents) {
+    } else if (e && e.postData && e.postData.contents) {
       rawContent = e.postData.contents;
     }
 
@@ -645,21 +640,21 @@ function handleRequest(e) {
     try {
       data = JSON.parse(rawContent);
     } catch(parseErr) {
-      // If rawContent is form-encoded (payload=...), try to extract the value
-      if (rawContent.indexOf('payload=') === 0) {
+      if (typeof rawContent === 'string' && rawContent.indexOf('payload=') === 0) {
         rawContent = decodeURIComponent(rawContent.substring(8));
         data = JSON.parse(rawContent);
       } else {
         throw parseErr;
       }
     }
+
     var rows = Array.isArray(data) ? data : (data.rows || [data]);
     if (!rows || rows.length === 0) {
       return responseJSON({ status: 'success', message: 'No rows provided' });
     }
 
     var lastRow = sheet.getLastRow();
-    var existingData = lastRow > 4 ? sheet.getRange(5, 1, lastRow - 4, 19).getValues() : [];
+    var existingData = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, 19).getValues() : [];
     
     var txGroups = {};
     rows.forEach(function(row, idx) {
@@ -678,7 +673,7 @@ function handleRequest(e) {
         var sheetTxIdStr = String(existingData[i][0] || '').trim();
         var sheetNotaStr = String(existingData[i][2] || '').trim();
         if ((incomingTxIdStr && sheetTxIdStr === incomingTxIdStr) || (incomingNotaStr && sheetNotaStr === incomingNotaStr)) {
-          matchingSheetRowIndices.push(i + 5);
+          matchingSheetRowIndices.push(i + 2);
         }
       }
 
@@ -706,13 +701,13 @@ function handleRequest(e) {
         incomingTxRows.forEach(function(r, idx) {
           var rowVals = formatRowData(r, idx + 1);
           var nextRow = sheet.getLastRow() + 1;
-          if (nextRow < 5) nextRow = 5;
+          if (nextRow < 2) nextRow = 2;
           sheet.getRange(nextRow, 1, 1, 19).setValues([rowVals]);
         });
       }
 
       lastRow = sheet.getLastRow();
-      existingData = lastRow > 4 ? sheet.getRange(5, 1, lastRow - 4, 19).getValues() : [];
+      existingData = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, 19).getValues() : [];
     }
 
     return responseJSON({ status: 'success', processed: rows.length });
@@ -729,39 +724,18 @@ function responseJSON(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-function ensureGridSize(sheet) {
-  try {
-    if (sheet.getMaxColumns() < 19) {
-      sheet.insertColumnsAfter(sheet.getMaxColumns(), 19 - sheet.getMaxColumns());
-    }
-    if (sheet.getMaxRows() < 100) {
-      sheet.insertRowsAfter(sheet.getMaxRows(), 100 - sheet.getMaxRows());
-    }
-  } catch(e) {}
-}
-
 function ensureHeaders(sheet) {
-  ensureGridSize(sheet);
-
-  var firstCellVal = sheet.getRange(4, 1).getValue();
-  if (sheet.getLastRow() < 4 || firstCellVal !== "ID Tx") {
-    if (sheet.getLastRow() < 4) sheet.clear();
-    sheet.getRange("A1:S1").merge().setValue("PT. ARBA MITRA USAHA GORONTALO (SPBU 74-961-4)")
-      .setFontWeight("bold").setFontSize(14).setFontColor("#E2231A").setHorizontalAlignment("center");
-    sheet.getRange("A2:S2").merge().setValue("LAPORAN PENJUALAN VOUCHER - SINKRONISASI OTOMATIS")
-      .setFontWeight("bold").setFontSize(12).setHorizontalAlignment("center");
-    sheet.getRange("A3:S3").merge().setValue("Sistem Otomasi Voucher & Nota Kwitansi | SPBU 74-961-4")
-      .setFontItalic(true).setFontSize(10).setFontColor("#64748B").setHorizontalAlignment("center");
-    
+  var firstCellVal = sheet.getRange(1, 1).getValue();
+  if (firstCellVal !== "ID Tx") {
     var headers = [
       "ID Tx", "No.", "No. Nota", "Tanggal", "Bulan", "Tahun", 
       "Nama Instansi", "Pecahan", "Seri Awal", "Seri Akhir", "Lembar", 
       "Subtotal Nominal", "Metode Pembayaran Voucher", "Admin", 
       "Metode Pembayaran Admin", "Biaya Clearing", "Total", "Petugas / TTD", "Status"
     ];
-    sheet.getRange(4, 1, 1, headers.length).setValues([headers])
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers])
       .setBackground("#E2231A").setFontColor("#FFFFFF").setFontWeight("bold").setHorizontalAlignment("center");
-    try { sheet.setFrozenRows(4); } catch(e) {}
+    try { sheet.setFrozenRows(1); } catch(e) {}
   }
 }
 

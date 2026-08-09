@@ -1238,6 +1238,9 @@ const DB = {
   },
 
   async syncAllToGoogleSheets(progressCallback, options = {}) {
+    const webhookUrl = this.getGoogleSheetsUrl();
+    if (!webhookUrl) return { total: 0, success: 0 };
+
     const transactions = this.getTransactions();
     if (!transactions || transactions.length === 0) return { total: 0, success: 0 };
 
@@ -1245,19 +1248,140 @@ const DB = {
       this.clearSyncedGSheetsCache();
     }
 
-    let successCount = 0;
     const sortedTxs = [...transactions].reverse();
+    const allPayloadRows = [];
+    const allSignatures = [];
 
-    for (let i = 0; i < sortedTxs.length; i++) {
-      const tx = sortedTxs[i];
-      const ok = await this.syncGoogleSheetsTransaction(tx, { force: options.force !== false });
-      if (ok) successCount++;
-      if (typeof progressCallback === 'function') {
-        progressCallback(i + 1, sortedTxs.length);
+    sortedTxs.forEach((tx) => {
+      const pVoucher = tx.paymentMethodVoucher || tx.paymentMethod || 'Tunai';
+      const pAdmin = tx.paymentMethodAdmin || tx.paymentMethod || 'Tunai';
+      const dateInfo = this.formatDateInfo(tx.transactionDate || tx.date);
+      const officer = tx.officerName || 'Saipul Karim Suleman';
+
+      if (tx.items && Array.isArray(tx.items) && tx.items.length > 0) {
+        tx.items.forEach((item, idx) => {
+          const sig = `${tx.id}_item${idx}_${item.voucherCode || ''}_${item.startSerial || ''}_${item.endSerial || ''}_${pVoucher}_${pAdmin}_${tx.customerName || ''}_${tx.updatedAt || ''}_${tx.status || ''}`;
+          const itemAdmin = Number(item.adminSubtotal) || (Number(item.quantity) * 500);
+          const itemClearing = (idx === 0) ? (Number(tx.clearingFee) || 0) : 0;
+          const itemSubtotal = Number(item.itemSubtotal) || 0;
+          const itemTotal = itemSubtotal + itemAdmin + itemClearing;
+
+          allPayloadRows.push({
+            id: tx.id || '',
+            item_no: idx + 1,
+            nota_number: tx.notaNumber || '',
+            transaction_date: tx.transactionDate || tx.date || '',
+            date_formatted: dateInfo.dateFormatted,
+            month_name: dateInfo.monthName,
+            year_str: dateInfo.yearStr,
+            customer_name: tx.customerName || '',
+            voucher_code: (item.voucherCode || '').toUpperCase(),
+            voucher_label: this.getVoucherLabel(item),
+            start_serial: item.startSerial || '',
+            end_serial: item.endSerial || '',
+            sheets: Number(item.quantity) || 0,
+            subtotal_nominal: itemSubtotal,
+            payment_voucher: pVoucher,
+            admin_fee: itemAdmin,
+            payment_admin: pAdmin,
+            clearing_fee: itemClearing,
+            total_amount: itemTotal,
+            officer_name: officer,
+            status: tx.status || 'SUKSES'
+          });
+          allSignatures.push(sig);
+        });
+      } else {
+        const sig = `${tx.id}_MANUAL_-_-_${pVoucher}_${pAdmin}_${tx.customerName || ''}_${tx.updatedAt || ''}_${tx.status || ''}`;
+        allPayloadRows.push({
+          id: tx.id || '',
+          item_no: 1,
+          nota_number: tx.notaNumber || '',
+          transaction_date: tx.transactionDate || tx.date || '',
+          date_formatted: dateInfo.dateFormatted,
+          month_name: dateInfo.monthName,
+          year_str: dateInfo.yearStr,
+          customer_name: tx.customerName || '',
+          voucher_code: 'MANUAL',
+          voucher_label: 'Voucher',
+          start_serial: '-',
+          end_serial: '-',
+          sheets: Number(tx.totalSheets) || 0,
+          subtotal_nominal: Number(tx.voucherSubtotal) || 0,
+          payment_voucher: pVoucher,
+          admin_fee: Number(tx.adminFee) || 0,
+          payment_admin: pAdmin,
+          clearing_fee: Number(tx.clearingFee) || 0,
+          total_amount: Number(tx.grandTotal) || 0,
+          officer_name: officer,
+          status: tx.status || 'SUKSES'
+        });
+        allSignatures.push(sig);
       }
-      await new Promise(r => setTimeout(r, 120));
+    });
+
+    if (allPayloadRows.length === 0) return { total: sortedTxs.length, success: sortedTxs.length };
+
+    const payloadObj = {
+      action: 'upsert_batch',
+      rows: allPayloadRows
+    };
+    const jsonStr = JSON.stringify(payloadObj);
+
+    let syncSuccess = false;
+    try {
+      await fetch(webhookUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: jsonStr
+      });
+      syncSuccess = true;
+    } catch (err) {
+      console.warn('Batch fetch sync failed, trying fallback:', err);
     }
-    return { total: sortedTxs.length, success: successCount };
+
+    if (typeof document !== 'undefined') {
+      try {
+        const iframeName = 'gsheet_batch_' + Date.now();
+        const iframe = document.createElement('iframe');
+        iframe.name = iframeName;
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = webhookUrl;
+        form.target = iframeName;
+        form.style.display = 'none';
+
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'payload';
+        input.value = jsonStr;
+        form.appendChild(input);
+        document.body.appendChild(form);
+
+        form.submit();
+        syncSuccess = true;
+        setTimeout(() => {
+          try { document.body.removeChild(iframe); } catch(e) {}
+          try { document.body.removeChild(form); } catch(e) {}
+        }, 3000);
+      } catch(formErr) {
+        console.warn('Batch form submit fallback error:', formErr);
+      }
+    }
+
+    if (syncSuccess) {
+      this.markGSheetsItemSynced(allSignatures);
+      if (typeof progressCallback === 'function') {
+        progressCallback(sortedTxs.length, sortedTxs.length);
+      }
+      return { total: sortedTxs.length, success: sortedTxs.length };
+    }
+
+    return { total: sortedTxs.length, success: 0 };
   },
 
   notifyDataChanged(source = 'local') {
