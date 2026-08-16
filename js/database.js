@@ -250,7 +250,18 @@ const DB = {
     this.init();
     try {
       let transactions = JSON.parse(this.getStorage().getItem(this.KEYS.TRANSACTIONS)) || [];
-      transactions.forEach(t => this.normalizeTxPaymentMethods(t));
+      transactions.forEach(t => {
+        this.normalizeTxPaymentMethods(t);
+        if (t.items && Array.isArray(t.items)) {
+          const seen = new Set();
+          t.items = t.items.filter(item => {
+            const key = `${(item.voucherCode || '').toUpperCase()}_${item.startSerial}_${item.endSerial}_${item.quantity}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+        }
+      });
       return transactions;
     } catch (e) {
       return [];
@@ -1019,15 +1030,23 @@ const DB = {
           voidReason: row.void_reason || null,
           createdAt: row.created_at,
           updatedAt: row.updated_at || row.created_at || new Date().toISOString(),
-          items: matchingItems.map(it => ({
-            voucherCode: it.voucher_code,
-            startSerial: it.serial_start,
-            endSerial: it.serial_end,
-            quantity: Number(it.quantity) || 0,
-            customPrice: (it.custom_price !== null && it.custom_price !== undefined) ? Number(it.custom_price) : undefined,
-            itemSubtotal: Number(it.item_subtotal) || 0,
-            adminSubtotal: Number(it.admin_subtotal) || 0
-          }))
+          items: (() => {
+            const seen = new Set();
+            return matchingItems.filter(it => {
+              const key = `${(it.voucher_code || '').toUpperCase()}_${it.serial_start}_${it.serial_end}_${it.quantity}`;
+              if (seen.has(key)) return false;
+              seen.add(key);
+              return true;
+            }).map(it => ({
+              voucherCode: it.voucher_code,
+              startSerial: it.serial_start,
+              endSerial: it.serial_end,
+              quantity: Number(it.quantity) || 0,
+              customPrice: (it.custom_price !== null && it.custom_price !== undefined) ? Number(it.custom_price) : undefined,
+              itemSubtotal: Number(it.item_subtotal) || 0,
+              adminSubtotal: Number(it.admin_subtotal) || 0
+            }));
+          })()
         };
         this.normalizeTxPaymentMethods(txObj);
 

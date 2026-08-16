@@ -768,7 +768,14 @@ const App = {
 
     // Set Next Nota Number
     const nextNota = DB.getNextNotaNumber();
-    document.getElementById('input-nota-no').value = String(nextNota);
+    const notaInput = document.getElementById('input-nota-no');
+    if (notaInput) {
+      notaInput.value = String(nextNota);
+      notaInput.readOnly = true;
+      notaInput.style.backgroundColor = '#f1f5f9';
+      notaInput.style.cursor = 'not-allowed';
+      notaInput.title = '🔒 Nomor Nota Kupon Terkunci Otomatis (Auto-Increment)';
+    }
 
     // Set Default Date to Today (Gorontalo format)
     const today = new Date();
@@ -863,8 +870,15 @@ const App = {
     // Switch tab to input
     this.switchTab('new-transaction');
 
-    // Populate Form Inputs
-    document.getElementById('input-nota-no').value = String(tx.notaNumber);
+    // Populate Form Inputs & Unlock Nota Number for Editing
+    const notaInput = document.getElementById('input-nota-no');
+    if (notaInput) {
+      notaInput.value = String(tx.notaNumber);
+      notaInput.readOnly = false;
+      notaInput.style.backgroundColor = '#ffffff';
+      notaInput.style.cursor = 'text';
+      notaInput.title = '✏️ Mode Edit: Anda dapat mengubah Nomor Nota ini jika diperlukan';
+    }
     document.getElementById('input-date').value = tx.transactionDate || '';
     document.getElementById('input-customer').value = tx.customerName || '';
     if (document.getElementById('select-customer-dropdown')) {
@@ -896,11 +910,21 @@ const App = {
       inputClearing.value = String(clearingVal);
     }
 
-    // Populate Rows
+    // Populate Rows (with deduplication guard against duplicate records)
     this.rows = [];
     document.getElementById('voucher-rows-body').innerHTML = '';
     if (tx.items && Array.isArray(tx.items) && tx.items.length > 0) {
+      const seen = new Set();
+      const uniqueItems = [];
       tx.items.forEach(item => {
+        const key = `${(item.voucherCode || '').toUpperCase()}_${item.startSerial}_${item.endSerial}_${item.quantity}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueItems.push(item);
+        }
+      });
+
+      uniqueItems.forEach(item => {
         const itemPrice = item.customPrice !== undefined ? item.customPrice : ((item.itemSubtotal && item.quantity) ? Math.round(item.itemSubtotal / item.quantity) : 0);
         this.addRow(item.voucherCode, item.startSerial, item.endSerial, item.quantity, itemPrice);
       });
@@ -918,6 +942,13 @@ const App = {
     if (alertBox) alertBox.style.display = 'none';
     const btnSave = document.getElementById('btn-save-only');
     if (btnSave) btnSave.innerHTML = '💾 Simpan Transaksi';
+    const notaInput = document.getElementById('input-nota-no');
+    if (notaInput) {
+      notaInput.readOnly = true;
+      notaInput.style.backgroundColor = '#f1f5f9';
+      notaInput.style.cursor = 'not-allowed';
+      notaInput.title = '🔒 Nomor Nota Kupon Terkunci Otomatis (Auto-Increment)';
+    }
     this.resetForm();
   },
 
