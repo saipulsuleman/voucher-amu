@@ -1195,6 +1195,57 @@ const DB = {
     return 'Voucher Manual';
   },
 
+  calculateExpiryDate(dateStr, voucherCode = 'V50') {
+    const months = (voucherCode || '').toUpperCase() === 'MANUAL' ? 1 : 6;
+    const d = dateStr ? new Date(dateStr) : new Date();
+    if (isNaN(d.getTime())) {
+      return {
+        dateFormatted: '-',
+        expiryDate: null,
+        daysRemaining: 0,
+        status: 'AKTIF',
+        validityMonths: months
+      };
+    }
+
+    const expDate = new Date(d);
+    const targetMonth = expDate.getMonth() + months;
+    expDate.setMonth(targetMonth);
+
+    // Month overflow correction (e.g. Aug 31 + 6 months -> Feb 28)
+    if (expDate.getMonth() > (targetMonth % 12)) {
+      expDate.setDate(0);
+    }
+
+    const day = String(expDate.getDate()).padStart(2, '0');
+    const month = String(expDate.getMonth() + 1).padStart(2, '0');
+    const year = expDate.getFullYear();
+    const dateFormatted = `${day}/${month}/${year}`;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const expCopy = new Date(expDate);
+    expCopy.setHours(0, 0, 0, 0);
+
+    const diffTime = expCopy.getTime() - today.getTime();
+    const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    let status = 'AKTIF';
+    if (daysRemaining < 0) {
+      status = 'KADALUARSA';
+    } else if (daysRemaining <= 15) {
+      status = 'SEGERA BERAKHIR';
+    }
+
+    return {
+      dateFormatted,
+      expiryDate: expDate,
+      daysRemaining,
+      status,
+      validityMonths: months
+    };
+  },
+
   getGoogleSheetsUrl() {
     this.init();
     return this.getStorage().getItem(this.KEYS.GOOGLE_SHEETS_URL) || this.DEFAULT_GOOGLE_SHEETS_URL;
@@ -1272,6 +1323,7 @@ const DB = {
           const itemClearing = (idx === 0) ? (Number(tx.clearingFee) || 0) : 0;
           const itemSubtotal = Number(item.itemSubtotal) || 0;
           const itemTotal = itemSubtotal + itemAdmin + itemClearing;
+          const expInfo = this.calculateExpiryDate(tx.transactionDate || tx.date || tx.createdAt, item.voucherCode);
 
           allPayloadRows.push({
             id: tx.id || '',
@@ -1294,12 +1346,16 @@ const DB = {
             clearing_fee: itemClearing,
             total_amount: itemTotal,
             officer_name: officer,
-            status: tx.status || 'SUKSES'
+            status: tx.status || 'SUKSES',
+            expiry_date_formatted: expInfo.dateFormatted,
+            expiry_status: expInfo.status,
+            validity_months: expInfo.validityMonths
           });
           allSignatures.push(sig);
         });
       } else {
         const sig = `${tx.id}_MANUAL_-_-_${pVoucher}_${pAdmin}_${tx.customerName || ''}_${tx.updatedAt || ''}_${tx.status || ''}`;
+        const expInfo = this.calculateExpiryDate(tx.transactionDate || tx.date || tx.createdAt, 'MANUAL');
         allPayloadRows.push({
           id: tx.id || '',
           item_no: 1,
@@ -1321,7 +1377,10 @@ const DB = {
           clearing_fee: Number(tx.clearingFee) || 0,
           total_amount: Number(tx.grandTotal) || 0,
           officer_name: officer,
-          status: tx.status || 'SUKSES'
+          status: tx.status || 'SUKSES',
+          expiry_date_formatted: expInfo.dateFormatted,
+          expiry_status: expInfo.status,
+          validity_months: expInfo.validityMonths
         });
         allSignatures.push(sig);
       }

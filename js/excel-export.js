@@ -136,6 +136,8 @@ const ExcelExport = {
           const itemSubtotal = Number(item.itemSubtotal) || 0;
           const itemTotal = itemSubtotal + itemAdmin + itemClearing;
 
+          const expInfo = (typeof DB !== 'undefined' && DB.calculateExpiryDate) ? DB.calculateExpiryDate(tx.transactionDate, item.voucherCode) : { dateFormatted: '-', status: 'AKTIF' };
+
           const rowData = {
             notaNumber: tx.notaNumber,
             dateFormatted: dateInfo.dateFormatted,
@@ -152,7 +154,9 @@ const ExcelExport = {
             paymentAdmin: pAdmin,
             clearingFee: itemClearing,
             totalAmount: itemTotal,
-            officerName: officer
+            officerName: officer,
+            expiryDateFormatted: expInfo.dateFormatted,
+            expiryStatus: expInfo.status
           };
 
           allRows.push(rowData);
@@ -314,7 +318,7 @@ const ExcelExport = {
   buildTableWorksheet(sheetName, rows, titleSuffix = "") {
     let ws = ` <Worksheet ss:Name="${sheetName}">
   <Table>
-   <!-- Column Widths A-Q -->
+   <!-- Column Widths A-S (19 Columns) -->
    <Column ss:Width="40"/>  <!-- A: No -->
    <Column ss:Width="65"/>  <!-- B: No. Nota -->
    <Column ss:Width="85"/>  <!-- C: Tanggal -->
@@ -332,22 +336,24 @@ const ExcelExport = {
    <Column ss:Width="90"/>  <!-- O: Biaya Clearing -->
    <Column ss:Width="110"/> <!-- P: Total -->
    <Column ss:Width="140"/> <!-- Q: Petugas / TTD -->
+   <Column ss:Width="105"/> <!-- R: Tgl Kadaluarsa -->
+   <Column ss:Width="115"/> <!-- S: Status Kadaluarsa -->
 
    <!-- Kop Surat Perusahaan -->
    <Row ss:Height="24">
-    <Cell ss:MergeAcross="16" ss:StyleID="KopCompany"><Data ss:Type="String">PT. ARBA MITRA USAHA GORONTALO (SPBU 74-961-4)</Data></Cell>
+    <Cell ss:MergeAcross="18" ss:StyleID="KopCompany"><Data ss:Type="String">PT. ARBA MITRA USAHA GORONTALO (SPBU 74-961-4)</Data></Cell>
    </Row>
    <Row ss:Height="20">
-    <Cell ss:MergeAcross="16" ss:StyleID="KopTitle"><Data ss:Type="String">LAPORAN PENJUALAN VOUCHER - ${sheetName.toUpperCase()}${titleSuffix ? ' (' + titleSuffix + ')' : ''}</Data></Cell>
+    <Cell ss:MergeAcross="18" ss:StyleID="KopTitle"><Data ss:Type="String">LAPORAN PENJUALAN VOUCHER - ${sheetName.toUpperCase()}${titleSuffix ? ' (' + titleSuffix + ')' : ''}</Data></Cell>
    </Row>
    <Row ss:Height="18">
-    <Cell ss:MergeAcross="16" ss:StyleID="KopSubTitle"><Data ss:Type="String">Sistem Otomasi Voucher &amp; Nota Kwitansi | Periode: ${titleSuffix || 'Semua Periode'}</Data></Cell>
+    <Cell ss:MergeAcross="18" ss:StyleID="KopSubTitle"><Data ss:Type="String">Sistem Otomasi Voucher &amp; Nota Kwitansi | Periode: ${titleSuffix || 'Semua Periode'}</Data></Cell>
    </Row>
 
    <!-- Baris Kosong (Skip 1 Row) -->
    <Row ss:Height="14"/>
 
-   <!-- Header Row (Red, White Bold Text) -->
+   <!-- Header Row (Red, White Bold Text - 19 Columns) -->
    <Row ss:Height="28">
     <Cell ss:StyleID="Header"><Data ss:Type="String">No.</Data></Cell>
     <Cell ss:StyleID="Header"><Data ss:Type="String">No. Nota</Data></Cell>
@@ -366,6 +372,8 @@ const ExcelExport = {
     <Cell ss:StyleID="Header"><Data ss:Type="String">Biaya Clearing</Data></Cell>
     <Cell ss:StyleID="Header"><Data ss:Type="String">Total</Data></Cell>
     <Cell ss:StyleID="Header"><Data ss:Type="String">Petugas / TTD</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Tgl Kadaluarsa</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Status Kadaluarsa</Data></Cell>
    </Row>
 `;
 
@@ -400,6 +408,8 @@ const ExcelExport = {
     <Cell ss:StyleID="Currency"><Data ss:Type="Number">${r.clearingFee}</Data></Cell>
     <Cell ss:StyleID="Currency"><Data ss:Type="Number">${r.totalAmount}</Data></Cell>
     <Cell ss:StyleID="CellText"><Data ss:Type="String">${escapeXML(r.officerName)}</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">${escapeXML(r.expiryDateFormatted || '')}</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">${escapeXML(r.expiryStatus || 'AKTIF')}</Data></Cell>
    </Row>
 `;
     });
@@ -414,6 +424,8 @@ const ExcelExport = {
     <Cell ss:StyleID="Total"></Cell>
     <Cell ss:StyleID="TotalCurrency"><Data ss:Type="Number">${totalClearing}</Data></Cell>
     <Cell ss:StyleID="TotalCurrency"><Data ss:Type="Number">${grandTotal}</Data></Cell>
+    <Cell ss:StyleID="Total"></Cell>
+    <Cell ss:StyleID="Total"></Cell>
     <Cell ss:StyleID="Total"></Cell>
    </Row>
   </Table>
@@ -980,7 +992,7 @@ const ExcelExport = {
         [`LAPORAN PENJUALAN VOUCHER - ${sheetName.toUpperCase()}${titleSuffix ? ' (' + titleSuffix + ')' : ''}`],
         [`Sistem Otomasi Voucher & Nota Kwitansi | Periode: ${titleSuffix || 'Semua Periode'}`],
         [],
-        ["No.", "No. Nota", "Tanggal", "Bulan", "Tahun", "Nama Instansi", "Pecahan", "Seri Awal", "Seri Akhir", "Lembar", "Subtotal Nominal", "Metode Pembayaran Voucher", "Admin", "Metode Pembayaran Admin", "Biaya Clearing", "Total", "Petugas / TTD"]
+        ["No.", "No. Nota", "Tanggal", "Bulan", "Tahun", "Nama Instansi", "Pecahan", "Seri Awal", "Seri Akhir", "Lembar", "Subtotal Nominal", "Metode Pembayaran Voucher", "Admin", "Metode Pembayaran Admin", "Biaya Clearing", "Total", "Petugas / TTD", "Tgl Kadaluarsa", "Status Kadaluarsa"]
       ];
 
       let tSheets = 0, tSubtotal = 0, tAdmin = 0, tClearing = 0, gTotal = 0;
@@ -1014,27 +1026,29 @@ const ExcelExport = {
           r.paymentAdmin || 'Tunai',
           clearingVal,
           totalVal,
-          r.officerName || ''
+          r.officerName || '',
+          r.expiryDateFormatted || '',
+          r.expiryStatus || 'AKTIF'
         ]);
       });
 
       aoa.push([
         "TOTAL KESELURUHAN", "", "", "", "", "", "", "", "",
-        tSheets, tSubtotal, "", tAdmin, "", tClearing, gTotal, ""
+        tSheets, tSubtotal, "", tAdmin, "", tClearing, gTotal, "", "", ""
       ]);
 
       const ws = XLSX.utils.aoa_to_sheet(aoa);
       ws['!merges'] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 16 } },
-        { s: { r: 1, c: 0 }, e: { r: 1, c: 16 } },
-        { s: { r: 2, c: 0 }, e: { r: 2, c: 16 } },
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 18 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 18 } },
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 18 } },
         { s: { r: aoa.length - 1, c: 0 }, e: { r: aoa.length - 1, c: 8 } }
       ];
       ws['!cols'] = [
         { wch: 6 }, { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 8 },
         { wch: 24 }, { wch: 16 }, { wch: 12 }, { wch: 12 }, { wch: 10 },
         { wch: 16 }, { wch: 15 }, { wch: 14 }, { wch: 15 }, { wch: 14 },
-        { wch: 16 }, { wch: 20 }
+        { wch: 16 }, { wch: 20 }, { wch: 16 }, { wch: 18 }
       ];
       return ws;
     };

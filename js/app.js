@@ -1395,6 +1395,77 @@ const App = {
     return `${months[d.getMonth()]} ${d.getFullYear()}`;
   },
 
+  getExpiryInfo(transactionDate, items = []) {
+    const d = transactionDate ? new Date(transactionDate) : new Date();
+    if (isNaN(d.getTime())) {
+      return {
+        formattedDate: '-',
+        shortFormatted: '-',
+        status: 'AKTIF',
+        badgeHtml: '<span class="badge" style="background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; font-size:0.75rem; padding:2px 6px; border-radius:4px; font-weight:600;">🟢 Aktif</span>',
+        noteText: '',
+        validityMonths: 6
+      };
+    }
+
+    const hasStandard = (items || []).some(i => (i.voucherCode || '').toUpperCase() !== 'MANUAL');
+    const hasManual = (items || []).some(i => (i.voucherCode || '').toUpperCase() === 'MANUAL');
+
+    const addMonths = (baseDate, m) => {
+      const copy = new Date(baseDate);
+      const targetMonth = copy.getMonth() + m;
+      copy.setMonth(targetMonth);
+      if (copy.getMonth() > (targetMonth % 12)) copy.setDate(0);
+      return copy;
+    };
+
+    const months = (hasStandard || !hasManual) ? 6 : 1;
+    const expDate = addMonths(d, months);
+    const monthsName = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    const formattedDate = `${expDate.getDate()} ${monthsName[expDate.getMonth()]} ${expDate.getFullYear()}`;
+    const shortFormatted = `${String(expDate.getDate()).padStart(2, '0')}/${String(expDate.getMonth() + 1).padStart(2, '0')}/${expDate.getFullYear()}`;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const expCopy = new Date(expDate);
+    expCopy.setHours(0, 0, 0, 0);
+
+    const diffTime = expCopy.getTime() - today.getTime();
+    const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    let status = 'AKTIF';
+    let badgeHtml = `<span class="badge" style="background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; font-size:0.75rem; padding:2px 6px; border-radius:4px; font-weight:600;">🟢 Berlaku s/d ${shortFormatted}</span>`;
+
+    if (daysRemaining < 0) {
+      status = 'KADALUARSA';
+      badgeHtml = `<span class="badge" style="background:#fef2f2; color:#991b1b; border:1px solid #fecaca; font-size:0.75rem; padding:2px 6px; border-radius:4px; font-weight:700;">🔴 Kadaluarsa (${Math.abs(daysRemaining)} hr lalu)</span>`;
+    } else if (daysRemaining <= 15) {
+      status = 'SEGERA BERAKHIR';
+      badgeHtml = `<span class="badge" style="background:#fffbeb; color:#92400e; border:1px solid #fde68a; font-size:0.75rem; padding:2px 6px; border-radius:4px; font-weight:600;">🟡 ${daysRemaining} hr lagi (s/d ${shortFormatted})</span>`;
+    }
+
+    let noteText = '';
+    if (hasStandard && hasManual) {
+      const manualExp = addMonths(d, 1);
+      const manualFormatted = `${manualExp.getDate()} ${monthsName[manualExp.getMonth()]} ${manualExp.getFullYear()}`;
+      noteText = `💡 Catatan: Kupon Standar berlaku 6 bulan (s/d ${formattedDate}), Kupon Manual berlaku 1 bulan (s/d ${manualFormatted})`;
+    } else if (hasManual) {
+      noteText = `💡 Catatan: Kupon Voucher Manual berlaku 1 bulan (s/d ${formattedDate})`;
+    } else {
+      noteText = `💡 Catatan: Kupon Voucher Standar berlaku 6 bulan (s/d ${formattedDate})`;
+    }
+
+    return {
+      formattedDate,
+      shortFormatted,
+      daysRemaining,
+      status,
+      badgeHtml,
+      noteText,
+      validityMonths: months
+    };
+  },
+
   _buildVoucherStripsHtml(items, customerName, dateStr) {
     const validUntilDate = this.getValidUntilFormatted(dateStr);
     const printedMonthYear = this.getPrintedMonthYear(dateStr);
@@ -1525,6 +1596,7 @@ const App = {
     const voucherTerbilang = formatTerbilangRupiah(voucherSubtotal, true);
     const adminClearingTerbilang = formatTerbilangRupiah(adminClearingSubtotal, true);
     const grandTotalTerbilang = formatTerbilangRupiah(grandTotal, true);
+    const expInfo = this.getExpiryInfo(dateStr, this.rows);
 
     if (this.activeDocType === 'voucher') {
       container.innerHTML = this._buildVoucherStripsHtml(this.rows, customer, dateStr);
@@ -1608,6 +1680,10 @@ const App = {
               TERBILANG : ${grandTotalTerbilang}
             </div>
 
+            <div style="font-size: 8px; color: #475569; font-style: italic; margin-top: 3px; margin-bottom: 2px; text-align: left;">
+              ${expInfo.noteText}
+            </div>
+
             <table class="nota-footer-table">
               <tr>
                 <td width="33%">
@@ -1658,7 +1734,8 @@ const App = {
         formattedDate,
         officer,
         paymentVoucher: payVoucher,
-        paymentAdmin: payAdmin
+        paymentAdmin: payAdmin,
+        transactionDate: dateStr
       };
       const singleKwitansiSlipHtml = this._buildKwitansiSlipHtml(kwitansiParams);
 
@@ -1784,6 +1861,7 @@ const App = {
 
   // ─── Helper: Build Kwitansi Slip HTML (for 1/3 F4 Bottom Section) ───────────
   _buildKwitansiSlipHtml(p) {
+    const expInfo = this.getExpiryInfo(p.transactionDate || new Date(), p.items);
     let kwitansiBreakdownHtml = '';
     (p.items || []).forEach(r => {
       const price = r.customPrice !== undefined ? r.customPrice : (r.itemSubtotal && r.quantity ? Math.round(r.itemSubtotal / r.quantity) : this.getVoucherPrice(r.voucherCode));
@@ -1859,6 +1937,9 @@ const App = {
                   <div style="width: 65px;">-</div>
                   <div style="width: 15px;">=</div>
                   <div>Rp ${p.adminClearingSubtotal.toLocaleString('id-ID')},-</div>
+                </div>
+                <div style="font-size: 8px; color: #475569; font-style: italic; margin-top: 3px; border-top: 1px dashed #cbd5e1; padding-top: 2px;">
+                  ${expInfo.noteText}
                 </div>
               </div>
             </div>
@@ -2121,6 +2202,7 @@ const App = {
       `_Terbilang Admin & Clearing: ${adminClearingTerbilang}_\n\n` +
       `💰 *GRAND TOTAL (GABUNGAN): Rp ${grandTotal.toLocaleString('id-ID')}*\n` +
       `_Terbilang Grand Total: ${grandTotalTerbilang}_\n\n` +
+      `📅 *Masa Berlaku Voucher:* Berlaku s/d ${this.getExpiryInfo(dateStr, this.rows).formattedDate} (${this.getExpiryInfo(dateStr, this.rows).validityMonths} Bulan)\n\n` +
       `Petugas: ${officer}`;
 
     const encodedMsg = encodeURIComponent(message);
@@ -2140,6 +2222,7 @@ const App = {
     const voucherTerbilang = tx.voucherTerbilang || formatTerbilangRupiah(voucherSubtotal, true);
     const adminClearingTerbilang = tx.adminClearingTerbilang || formatTerbilangRupiah(adminClearingSubtotal, true);
     const grandTotalTerbilang = tx.terbilang || formatTerbilangRupiah(grandTotal, true);
+    const expInfo = this.getExpiryInfo(tx.transactionDate, tx.items);
 
     const txPayV = tx.paymentVoucher || tx.payment_voucher || 'Tunai';
     const txPayA = tx.paymentAdmin || tx.payment_admin || 'Tunai';
@@ -2224,6 +2307,10 @@ const App = {
               TERBILANG : ${grandTotalTerbilang}
             </div>
 
+            <div style="font-size: 8px; color: #475569; font-style: italic; margin-top: 3px; margin-bottom: 2px; text-align: left;">
+              ${expInfo.noteText}
+            </div>
+
             <table class="nota-footer-table">
               <tr>
                 <td width="33%">
@@ -2270,7 +2357,8 @@ const App = {
         formattedDate,
         officer: window.escapeHTML(tx.officerName) || 'Saipul Karim Suleman',
         paymentVoucher: txPayV,
-        paymentAdmin: txPayA
+        paymentAdmin: txPayA,
+        transactionDate: tx.transactionDate
       };
       const singleKwitansiSlipHtml = this._buildKwitansiSlipHtml(kwitansiParams);
 
@@ -2358,6 +2446,9 @@ const App = {
                     <div style="width: 20px;">=</div>
                     <div>Rp ${adminClearingSubtotal.toLocaleString('id-ID')},-</div>
                   </div>
+                  <div style="font-size: 8.5px; color: #475569; font-style: italic; margin-top: 5px; border-top: 1px dashed #cbd5e1; padding-top: 4px;">
+                    ${expInfo.noteText}
+                  </div>
                 </div>
               </div>
             </div>
@@ -2427,7 +2518,13 @@ const App = {
       }
 
       // 4. Status Filter
-      if (state.status !== 'ALL') {
+      if (state.status === 'AKTIF') {
+        const exp = this.getExpiryInfo(tx.transactionDate, tx.items);
+        if (tx.status === 'VOID' || exp.status === 'KADALUARSA') return false;
+      } else if (state.status === 'KADALUARSA') {
+        const exp = this.getExpiryInfo(tx.transactionDate, tx.items);
+        if (tx.status === 'VOID' || exp.status !== 'KADALUARSA') return false;
+      } else if (state.status !== 'ALL') {
         if (tx.status !== state.status) return false;
       }
 
@@ -2613,6 +2710,7 @@ const App = {
       const isVoid = tx.status === 'VOID';
       const isExpanded = expandedSet.has(tx.id);
       const itemsDetailText = tx.items ? tx.items.map(i => `${i.quantity}Lbr (${i.voucherCode})`).join(', ') : '-';
+      const expInfo = this.getExpiryInfo(tx.transactionDate, tx.items);
       const statusBadge = isVoid
         ? `<span class="badge badge-void">VOID (Dibatalkan)</span>`
         : `<span class="badge badge-success">SUKSES</span>`;
@@ -2626,7 +2724,10 @@ const App = {
 
       return `
         <tr style="${isVoid ? 'opacity:0.65; background-color:#fff1f0;' : ''}">
-          <td><b>#${tx.notaNumber}</b></td>
+          <td>
+            <b>#${tx.notaNumber}</b>
+            ${!isVoid ? `<div style="margin-top:4px;">${expInfo.badgeHtml}</div>` : ''}
+          </td>
           <td>${tx.transactionDate}</td>
           <td><b>${window.escapeHTML(tx.customerName)}</b>${payBadge}</td>
           <td>
