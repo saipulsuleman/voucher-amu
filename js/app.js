@@ -584,7 +584,7 @@ const App = {
       if (res.total === 0) {
         alert("⚠️ Tidak ada data transaksi di penyimpanan aplikasi ini (0 transaksi).\n\nJika data transaksi Anda tersimpan di Supabase Cloud, silakan klik 'Pull Data dari Supabase' terlebih dahulu, atau pastikan Anda membuka tab/domain yang menyimpan data transaksi.");
       } else if (res.success === res.total) {
-        alert(`✅ Sinkronisasi Google Sheets Selesai!\n${res.success} dari ${res.total} transaksi berhasil disinkronkan.`);
+        alert(`✅ Sinkronisasi Google Sheets Berhasil!\n\nSeluruh ${res.success} transaksi (termasuk semua rincian pecahan kupon) telah berhasil disinkronkan ke Google Sheet.`);
       } else if (res.success > 0) {
         alert(`⚠️ Sync Sebagian Berhasil!\n${res.success} dari ${res.total} transaksi berhasil.\n${res.total - res.success} transaksi gagal. Silakan coba lagi.`);
       } else {

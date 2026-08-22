@@ -1287,7 +1287,7 @@ const DB = {
 
   async syncGoogleSheetsTransaction(tx, options = {}) {
     try {
-      const res = await this.syncAllToGoogleSheets(null, options);
+      const res = await this.syncAllToGoogleSheets(null, { force: true, resetCache: true, ...options });
       return !!(res && res.success > 0);
     } catch (e) {
       console.warn("Google Sheets Sync Note:", e);
@@ -1302,11 +1302,18 @@ const DB = {
     const transactions = this.getTransactions();
     if (!transactions || transactions.length === 0) return { total: 0, success: 0 };
 
-    if (options && options.resetCache) {
+    if (options && (options.resetCache || options.force)) {
       this.clearSyncedGSheetsCache();
     }
 
-    const sortedTxs = [...transactions].filter(t => t.status !== 'VOID' && t.status !== 'DIBATALKAN').reverse();
+    const sortedTxs = [...transactions]
+      .filter(t => t.status !== 'VOID' && t.status !== 'DIBATALKAN')
+      .sort((a, b) => {
+        const numA = parseInt(a.notaNumber, 10) || 0;
+        const numB = parseInt(b.notaNumber, 10) || 0;
+        if (numA !== numB) return numA - numB;
+        return String(a.notaNumber || '').localeCompare(String(b.notaNumber || ''));
+      });
     const allPayloadRows = [];
     const allSignatures = [];
 
