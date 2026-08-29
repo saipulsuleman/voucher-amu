@@ -82,6 +82,22 @@ const App = {
     this.resetForm();
     this.renderHistoryTable();
 
+    // Reaktivitas Real-time: Tanggapi perubahan transaksi (Cloud Pull, Re-index, Save, Delete, Void)
+    window.addEventListener('amu-transactions-changed', (e) => {
+      // Jika form sedang dalam mode input transaksi baru (bukan edit), perbarui nomor nota & status pecahan
+      if (!this.editingTxId) {
+        const nextNota = DB.getNextNotaNumber();
+        const notaInput = document.getElementById('input-nota-no');
+        if (notaInput) {
+          notaInput.value = String(nextNota);
+        }
+        this.updateDenomLastSerialsBar();
+        this.updateCustomerHistoryHint();
+      }
+      this.renderHistoryTable();
+      if (typeof Dashboard !== 'undefined') Dashboard.renderDashboard();
+    });
+
     this.checkSessionStatus();
 
     const cfg = DB.getSupabaseConfig();
@@ -372,26 +388,62 @@ const App = {
       }
     });
 
-    document.getElementById('btn-reindex-nota')?.addEventListener('click', () => {
-      const confirmReindex = confirm("PERINGATAN: Aksi ini akan menulis ulang seluruh nomor nota Anda secara permanen berdasarkan tanggal transaksi (dari yang terlama).\n\nApakah Anda yakin ingin melanjutkan?");
-      if (confirmReindex) {
-        const startNo = prompt("Masukkan nomor awal untuk nota pertama (terlama):", "36");
-        if (startNo !== null) {
-          const parsedStartNo = parseInt(startNo, 10);
-          if (isNaN(parsedStartNo) || parsedStartNo < 1) {
-            alert("Nomor awal tidak valid. Harus berupa angka lebih besar dari 0.");
-            return;
+    const handleReindexClick = async (clickedBtn) => {
+      const confirmReindex = confirm("PERINGATAN: Aksi ini akan menulis ulang seluruh nomor nota Anda secara kronologis berdasarkan tanggal transaksi (dari yang terlama ke terbaru), dan otomatis menyinkronkan hasil urutan baru ke Supabase Cloud serta Google Sheets.\n\nApakah Anda yakin ingin melanjutkan?");
+      if (!confirmReindex) return;
+
+      const startNo = prompt("Masukkan nomor awal untuk nota pertama (terlama):", "36");
+      if (startNo === null) return;
+
+      const parsedStartNo = parseInt(startNo, 10);
+      if (isNaN(parsedStartNo) || parsedStartNo < 1) {
+        alert("Nomor awal tidak valid. Harus berupa angka lebih besar dari 0.");
+        return;
+      }
+
+      const origText = clickedBtn ? clickedBtn.innerHTML : '';
+      if (clickedBtn) {
+        clickedBtn.disabled = true;
+        clickedBtn.innerHTML = '⏳ 1/3 Mengurutkan nomor nota lokal...';
+      }
+
+      try {
+        const result = await DB.reindexNotaNumbers(parsedStartNo, {
+          onSupabaseProgress: (curr, total) => {
+            if (clickedBtn) clickedBtn.innerHTML = `⏳ 2/3 Sync Supabase Cloud (${curr}/${total})...`;
+          },
+          onGSheetProgress: (curr, total) => {
+            if (clickedBtn) clickedBtn.innerHTML = `⏳ 3/3 Sync Google Sheets (${curr}/${total})...`;
           }
-          const result = DB.reindexNotaNumbers(parsedStartNo);
-          if (result.success) {
-            alert(`Berhasil! Nomor nota pada ${result.count} transaksi telah diurutkan ulang berdasarkan tanggal dimulai dari No ${parsedStartNo}.`);
-            location.reload(); // Muat ulang aplikasi untuk memperbarui tampilan
-          } else {
-            alert(`Gagal: ${result.message}`);
+        });
+
+        if (result.success) {
+          let msg = `✅ Berhasil Mengurutkan Ulang Nomor Nota!\n\n` +
+            `• Sebanyak ${result.count} transaksi telah diurutkan kronologis tanggal mulai dari No #${parsedStartNo} s/d #${result.maxNota}.\n`;
+
+          if (result.supabaseResult && result.supabaseResult.total > 0) {
+            msg += `• Supabase Cloud: ${result.supabaseResult.success} transaksi berhasil diperbarui.\n`;
           }
+          if (result.gsheetResult && result.gsheetResult.total > 0) {
+            msg += `• Google Sheets: ${result.gsheetResult.success} transaksi berhasil diperbarui.\n`;
+          }
+          alert(msg);
+          location.reload();
+        } else {
+          alert(`Gagal: ${result.message}`);
+        }
+      } catch (err) {
+        alert(`Terjadi kesalahan saat mengurutkan ulang nota: ${err.message}`);
+      } finally {
+        if (clickedBtn) {
+          clickedBtn.disabled = false;
+          clickedBtn.innerHTML = origText;
         }
       }
-    });
+    };
+
+    document.getElementById('btn-reindex-nota')?.addEventListener('click', (e) => handleReindexClick(e.currentTarget));
+    document.getElementById('btn-reindex-nota-header')?.addEventListener('click', (e) => handleReindexClick(e.currentTarget));
 
 
     // Supabase Settings Save & Test Connection

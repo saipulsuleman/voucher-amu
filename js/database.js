@@ -488,12 +488,15 @@ const DB = {
     }
     return null;
   },
-  reindexNotaNumbers(startNumber = 36) {
+  async reindexNotaNumbers(startNumber = 36, options = {}) {
     try {
+      this.init();
       let txs = this.getTransactions();
-      if (!txs || txs.length === 0) return { success: true, count: 0 };
+      if (!txs || txs.length === 0) {
+        return { success: true, count: 0, maxNota: 0, supabaseResult: { total: 0, success: 0 }, gsheetResult: { total: 0, success: 0 } };
+      }
 
-      // Urutkan ascending berdasarkan tanggal transaksi
+      // Urutkan ascending secara ketat berdasarkan tanggal transaksi, lalu createdAt
       txs.sort((a, b) => {
         let dateA = new Date(a.transactionDate || a.createdAt || 0).getTime();
         let dateB = new Date(b.transactionDate || b.createdAt || 0).getTime();
@@ -501,23 +504,67 @@ const DB = {
         if (isNaN(dateB)) dateB = 0;
         
         if (dateA !== dateB) return dateA - dateB;
+
+        let createA = new Date(a.createdAt || 0).getTime();
+        let createB = new Date(b.createdAt || 0).getTime();
+        if (isNaN(createA)) createA = 0;
+        if (isNaN(createB)) createB = 0;
+        if (createA !== createB) return createA - createB;
+
         const nA = parseInt(a.notaNumber, 10) || 0;
         const nB = parseInt(b.notaNumber, 10) || 0;
         return nA - nB;
       });
 
+      const nowISO = new Date().toISOString();
       let maxNota = 0;
       txs.forEach((tx, idx) => {
         tx.notaNumber = startNumber + idx;
+        tx.updatedAt = nowISO;
         maxNota = tx.notaNumber;
       });
 
-      // Kembalikan ke urutan descending sebelum disimpan (untuk standar lokal)
-      txs.reverse();
+      // Kembalikan ke urutan descending sebelum disimpan (untuk standar display lokal)
+      const reversedTxs = [...txs].reverse();
 
-      this.getStorage().setItem(this.KEYS.TRANSACTIONS, JSON.stringify(txs));
+      this.getStorage().setItem(this.KEYS.TRANSACTIONS, JSON.stringify(reversedTxs));
       this.getStorage().setItem(this.KEYS.LAST_NOTA_NO, String(maxNota));
-      return { success: true, count: txs.length };
+
+      // Reset cache sinkronisasi agar seluruh nota terunggah ulang dengan nomor baru
+      this.clearSyncedSupabaseCache();
+      this.clearSyncedGSheetsCache();
+
+      let sbResult = { total: txs.length, success: 0, skipped: 0 };
+      let gsheetResult = { total: txs.length, success: 0 };
+
+      // 1. Sinkronisasi ke Supabase Cloud jika terkonfigurasi
+      const cfg = this.getSupabaseConfig();
+      if (cfg && cfg.url && cfg.key) {
+        try {
+          sbResult = await this.syncAllToSupabase(options.onSupabaseProgress, { force: true, resetCache: true });
+        } catch (sbErr) {
+          console.warn("Supabase reindex sync warning:", sbErr);
+        }
+      }
+
+      // 2. Sinkronisasi ke Google Sheets jika terkonfigurasi
+      const gsheetUrl = this.getGoogleSheetsUrl();
+      if (gsheetUrl) {
+        try {
+          gsheetResult = await this.syncAllToGoogleSheets(options.onGSheetProgress, { force: true, resetCache: true });
+        } catch (gsErr) {
+          console.warn("Google Sheets reindex sync warning:", gsErr);
+        }
+      }
+
+      this.notifyDataChanged('reindex');
+      return {
+        success: true,
+        count: txs.length,
+        maxNota,
+        supabaseResult: sbResult,
+        gsheetResult: gsheetResult
+      };
     } catch (err) {
       return { success: false, message: err.message };
     }
@@ -1099,10 +1146,22 @@ const DB = {
         return nB - nA;
       });
 
-      this.getStorage().setItem(this.KEYS.TRANSACTIONS, JSON.stringify(localTxs));
-      if (maxNota > 43) {
-        this.getStorage().setItem(this.KEYS.LAST_NOTA_NO, String(maxNota));
+      let calculatedMaxNota = 35;
+      for (const t of localTxs) {
+        if (t.status === 'VOID') continue;
+        const n = parseInt(t.notaNumber, 10);
+        if (!isNaN(n) && n > calculatedMaxNota) {
+          calculatedMaxNota = n;
+        }
       }
+
+      const currentStoredLast = parseInt(this.getStorage().getItem(this.KEYS.LAST_NOTA_NO) || '35', 10);
+      if (!isNaN(currentStoredLast) && currentStoredLast > calculatedMaxNota) {
+        calculatedMaxNota = currentStoredLast;
+      }
+
+      this.getStorage().setItem(this.KEYS.TRANSACTIONS, JSON.stringify(localTxs));
+      this.getStorage().setItem(this.KEYS.LAST_NOTA_NO, String(calculatedMaxNota));
 
       this.notifyDataChanged('cloud-fetch');
       const missingPaymentColsInCloud = rawTxs.length > 0 && (rawTxs[0].payment_voucher === undefined && rawTxs[0].payment_admin === undefined);
