@@ -742,11 +742,26 @@ function responseJSON(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+function ensureSheetCapacity(sheet, neededRows, neededCols) {
+  if (!sheet) return;
+  var maxRows = sheet.getMaxRows();
+  if (maxRows < neededRows) {
+    sheet.insertRowsAfter(maxRows, neededRows - maxRows);
+  }
+  var maxCols = sheet.getMaxColumns();
+  if (maxCols < neededCols) {
+    sheet.insertColumnsAfter(maxCols, neededCols - maxCols);
+  }
+}
+
 function populateTransactionSheet(ss, sheetName, rows, titleSuffix, subtitleSuffix) {
   var sheet = ss.getSheetByName(sheetName);
   if (!sheet) {
     sheet = ss.insertSheet(sheetName);
   }
+
+  var neededRows = 10 + (rows ? rows.length : 0);
+  ensureSheetCapacity(sheet, neededRows, 19);
 
   try { sheet.setFrozenRows(0); } catch(e) {}
   sheet.clear();
@@ -865,6 +880,7 @@ function populateTransactionSheet(ss, sheetName, rows, titleSuffix, subtitleSuff
 function populateIncomeStatement(ss, rows) {
   var sheet = ss.getSheetByName("Laporan Laba Rugi");
   if (!sheet) sheet = ss.insertSheet("Laporan Laba Rugi");
+  ensureSheetCapacity(sheet, 25, 5);
   sheet.clear();
 
   sheet.getRange("A1:B1").merge().setValue("PT. ARBA MITRA USAHA GORONTALO (SPBU 74-961-4)")
@@ -916,6 +932,7 @@ function populateIncomeStatement(ss, rows) {
 function populateCashFlow(ss, rows) {
   var sheet = ss.getSheetByName("Rekapitulasi Arus Kas");
   if (!sheet) sheet = ss.insertSheet("Rekapitulasi Arus Kas");
+  ensureSheetCapacity(sheet, 25, 5);
   sheet.clear();
 
   sheet.getRange("A1:B1").merge().setValue("PT. ARBA MITRA USAHA GORONTALO (SPBU 74-961-4)")
@@ -968,19 +985,8 @@ function populateCashFlow(ss, rows) {
 function populateGeneralJournal(ss, rows) {
   var sheet = ss.getSheetByName("Jurnal Umum");
   if (!sheet) sheet = ss.insertSheet("Jurnal Umum");
-  sheet.clear();
-
-  sheet.getRange("A1:F1").merge().setValue("PT. ARBA MITRA USAHA GORONTALO (SPBU 74-961-4)")
-    .setFontWeight("bold").setFontSize(14).setFontColor("#E2231A").setHorizontalAlignment("center");
-  sheet.getRange("A2:F2").merge().setValue("JURNAL UMUM AKUNTANSI - Semua Periode")
-    .setFontWeight("bold").setFontSize(12).setFontColor("#1E293B").setHorizontalAlignment("center");
-  sheet.getRange("A3:F3").merge().setValue("Sistem Otomasi Voucher & Nota Kwitansi | Periode: Semua Periode")
-    .setFontStyle("italic").setFontSize(10).setFontColor("#64748B").setHorizontalAlignment("center");
 
   var headers = ["Tanggal", "No. Bukti / Nota", "Kode Akun", "Nama Akun", "Debit", "Kredit"];
-  sheet.getRange(5, 1, 1, 6).setValues([headers])
-    .setBackground("#E2231A").setFontColor("#FFFFFF").setFontWeight("bold").setHorizontalAlignment("center");
-
   var journalRows = [];
   var totalDebit = 0;
   var totalKredit = 0;
@@ -1011,6 +1017,20 @@ function populateGeneralJournal(ss, rows) {
       totalKredit += adminClearing;
     }
   });
+
+  var neededRows = 10 + journalRows.length;
+  ensureSheetCapacity(sheet, neededRows, 6);
+  sheet.clear();
+
+  sheet.getRange("A1:F1").merge().setValue("PT. ARBA MITRA USAHA GORONTALO (SPBU 74-961-4)")
+    .setFontWeight("bold").setFontSize(14).setFontColor("#E2231A").setHorizontalAlignment("center");
+  sheet.getRange("A2:F2").merge().setValue("JURNAL UMUM AKUNTANSI - Semua Periode")
+    .setFontWeight("bold").setFontSize(12).setFontColor("#1E293B").setHorizontalAlignment("center");
+  sheet.getRange("A3:F3").merge().setValue("Sistem Otomasi Voucher & Nota Kwitansi | Periode: Semua Periode")
+    .setFontStyle("italic").setFontSize(10).setFontColor("#64748B").setHorizontalAlignment("center");
+
+  sheet.getRange(5, 1, 1, 6).setValues([headers])
+    .setBackground("#E2231A").setFontColor("#FFFFFF").setFontWeight("bold").setHorizontalAlignment("center");
 
   if (journalRows.length > 0) {
     sheet.getRange(6, 1, journalRows.length, 6).setValues(journalRows);

@@ -1043,7 +1043,7 @@ const DB = {
 
       const localTxs = this.getTransactions();
       let mergedCount = 0;
-      let maxNota = 43;
+      let maxNota = 35;
 
       for (const row of rawTxs) {
         const matchingItems = Array.isArray(rawItems)

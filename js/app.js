@@ -2538,6 +2538,29 @@ const App = {
     }, 300);
   },
 
+  toISODateString(dateStr) {
+    if (!dateStr) return '';
+    const str = String(dateStr).trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+      return str.slice(0, 10);
+    }
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(str)) {
+      const parts = str.split('/');
+      const d = parts[0].padStart(2, '0');
+      const m = parts[1].padStart(2, '0');
+      const y = parts[2];
+      return `${y}-${m}-${d}`;
+    }
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+    return str;
+  },
+
   getFilteredHistoryTransactions() {
     let transactions = DB.getTransactions() || [];
     const state = this.historyState;
@@ -2554,11 +2577,14 @@ const App = {
       }
 
       // 2. Date Range Filter
+      const txYMD = this.toISODateString(tx.transactionDate || tx.createdAt);
       if (state.startDate) {
-        if (tx.transactionDate < state.startDate) return false;
+        const startYMD = this.toISODateString(state.startDate);
+        if (txYMD && txYMD < startYMD) return false;
       }
       if (state.endDate) {
-        if (tx.transactionDate > state.endDate) return false;
+        const endYMD = this.toISODateString(state.endDate);
+        if (txYMD && txYMD > endYMD) return false;
       }
 
       // 3. Payment Method Filter
@@ -2585,13 +2611,10 @@ const App = {
 
     // Urutkan berdasarkan tanggal (terbaru ke terlama), lalu nota (terbesar ke terkecil)
     return filtered.sort((a, b) => {
-      let dateA = new Date(a.transactionDate || a.createdAt || 0).getTime();
-      let dateB = new Date(b.transactionDate || b.createdAt || 0).getTime();
-      if (isNaN(dateA)) dateA = 0;
-      if (isNaN(dateB)) dateB = 0;
-      
-      if (dateB !== dateA) {
-        return dateB - dateA;
+      const ymdA = this.toISODateString(a.transactionDate || a.createdAt);
+      const ymdB = this.toISODateString(b.transactionDate || b.createdAt);
+      if (ymdB !== ymdA) {
+        return ymdB.localeCompare(ymdA);
       }
       const nA = parseInt(a.notaNumber, 10) || 0;
       const nB = parseInt(b.notaNumber, 10) || 0;
@@ -2632,9 +2655,9 @@ const App = {
     if (countBadgeEl) {
       const allCount = (DB.getTransactions() || []).length;
       if (totalTx === allCount) {
-        countBadgeEl.textContent = `(Total: ${allCount} Transaksi)`;
+        countBadgeEl.innerHTML = `(Total: <b>${allCount}</b> Transaksi)`;
       } else {
-        countBadgeEl.textContent = `(Ditemukan ${totalTx} dari ${allCount} Transaksi)`;
+        countBadgeEl.innerHTML = `<span style="color:#c2410c; background:#fff7ed; padding:2px 8px; border-radius:4px; border:1px solid #fed7aa;">⚠️ Menampilkan <b>${totalTx}</b> dari ${allCount} Transaksi <a href="javascript:void(0)" onclick="document.getElementById('btn-reset-hist-filter')?.click()" style="color:#0284c7; text-decoration:underline; margin-left:4px; font-weight:bold;">[Tampilkan Semua]</a></span>`;
       }
     }
   },
