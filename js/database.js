@@ -1519,7 +1519,8 @@ const DB = {
       console.warn('Batch fetch sync note:', err);
     }
 
-    if (typeof document !== 'undefined') {
+    // Only fallback to iframe form submission if fetch failed, preventing duplicate concurrent write contention on Apps Script lock
+    if (!syncSuccess && typeof document !== 'undefined') {
       try {
         const iframeName = 'gsheet_batch_' + Date.now();
         const iframe = document.createElement('iframe');

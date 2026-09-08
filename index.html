@@ -626,7 +626,7 @@ function doPost(e) {
 
 function handleRequest(e) {
   var lock = LockService.getScriptLock();
-  lock.tryLock(15000);
+  lock.tryLock(30000);
 
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -669,7 +669,7 @@ function handleRequest(e) {
       return responseJSON({ status: 'success', message: 'No rows provided' });
     }
 
-    // Sort rows by Nota Number (asc), then Start Serial
+    // Sort rows by Nota Number (asc), then Start Serial for REKAPITULASI TOTAL
     rows.sort(function(a, b) {
       var notaA = parseInt(a.nota_number, 10) || 0;
       var notaB = parseInt(b.nota_number, 10) || 0;
@@ -682,6 +682,22 @@ function handleRequest(e) {
       if (groupA !== groupB) return groupA - groupB;
       return serialA - serialB;
     });
+
+    // Helper to sort denomination sheets strictly by Start Serial (sequential continuous serials guarantee)
+    function sortRowsBySerial(list) {
+      return list.sort(function(a, b) {
+        var serialA = parseInt(String(a.start_serial || '').replace(/\D/g, ''), 10) || 0;
+        var serialB = parseInt(String(b.start_serial || '').replace(/\D/g, ''), 10) || 0;
+        var groupA = (serialA >= 99000 && serialA <= 100000) ? 0 : 1;
+        var groupB = (serialB >= 99000 && serialB <= 100000) ? 0 : 1;
+        if (groupA !== groupB) return groupA - groupB;
+        if (serialA !== serialB) return serialA - serialB;
+
+        var notaA = parseInt(a.nota_number, 10) || 0;
+        var notaB = parseInt(b.nota_number, 10) || 0;
+        return notaA - notaB;
+      });
+    }
 
     // Group rows into sheets matching Excel Export structure
     var sheetsMap = {
@@ -727,6 +743,9 @@ function handleRequest(e) {
 
     for (var sheetName in sheetsMap) {
       var sheetRows = sheetsMap[sheetName];
+      if (sheetName !== "REKAPITULASI TOTAL") {
+        sortRowsBySerial(sheetRows);
+      }
       populateTransactionSheet(ss, sheetName, sheetRows, titlesMap[sheetName], subTitlesMap[sheetName]);
     }
 

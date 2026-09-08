@@ -165,30 +165,44 @@ const ExcelExport = {
       }
     });
 
-    // Sort comparator: 1st by Nota Number (asc), 2nd by Start Serial (khusus)
-    const sortRows = (a, b) => {
-      const notaA = parseInt(a.notaNumber, 10) || 0;
-      const notaB = parseInt(b.notaNumber, 10) || 0;
+    // Sort comparator for REKAPITULASI TOTAL: 1st by Nota Number (asc), 2nd by Start Serial (khusus)
+    const sortRowsByNota = (a, b) => {
+      const notaA = parseInt(a.notaNumber || a.nota_number, 10) || 0;
+      const notaB = parseInt(b.notaNumber || b.nota_number, 10) || 0;
       if (notaA !== notaB) return notaA - notaB;
 
-      const serialA = parseInt(String(a.startSerial).replace(/\D/g, ''), 10) || 0;
-      const serialB = parseInt(String(b.startSerial).replace(/\D/g, ''), 10) || 0;
+      const serialA = parseInt(String(a.startSerial || a.start_serial || '').replace(/\D/g, ''), 10) || 0;
+      const serialB = parseInt(String(b.startSerial || b.start_serial || '').replace(/\D/g, ''), 10) || 0;
       
-      // Kasus khusus: Seri lama yang mendekati 100000 (misal > 99000) diprioritaskan di atas (Group 0)
-      // Seri baru (misal 95000) masuk di bawahnya (Group 1)
       const groupA = (serialA >= 99000 && serialA <= 100000) ? 0 : 1;
       const groupB = (serialB >= 99000 && serialB <= 100000) ? 0 : 1;
-      
-      if (groupA !== groupB) {
-        return groupA - groupB;
-      }
-      
-      // Jika di kelompok yang sama, urutkan dari kecil ke besar (ascending) normal
+      if (groupA !== groupB) return groupA - groupB;
       return serialA - serialB;
     };
 
-    allRows.sort(sortRows);
-    Object.keys(sheetsMap).forEach(k => sheetsMap[k].sort(sortRows));
+    // Sort comparator for Denomination Sheets: 1st by Start Serial (continuous sequential order guarantee), 2nd by Nota
+    const sortRowsBySerial = (a, b) => {
+      const serialA = parseInt(String(a.startSerial || a.start_serial || '').replace(/\D/g, ''), 10) || 0;
+      const serialB = parseInt(String(b.startSerial || b.start_serial || '').replace(/\D/g, ''), 10) || 0;
+      
+      const groupA = (serialA >= 99000 && serialA <= 100000) ? 0 : 1;
+      const groupB = (serialB >= 99000 && serialB <= 100000) ? 0 : 1;
+      if (groupA !== groupB) return groupA - groupB;
+      if (serialA !== serialB) return serialA - serialB;
+
+      const notaA = parseInt(a.notaNumber || a.nota_number, 10) || 0;
+      const notaB = parseInt(b.notaNumber || b.nota_number, 10) || 0;
+      return notaA - notaB;
+    };
+
+    allRows.sort(sortRowsByNota);
+    Object.keys(sheetsMap).forEach(k => {
+      if (k === "REKAPITULASI TOTAL") {
+        sheetsMap[k].sort(sortRowsByNota);
+      } else {
+        sheetsMap[k].sort(sortRowsBySerial);
+      }
+    });
 
     // Native .xlsx Export via SheetJS (if available)
     if (typeof XLSX !== 'undefined') {
