@@ -13,7 +13,7 @@ const DB = {
     GOOGLE_SHEETS_URL: 'amu_voucher_gsheet_url'
   },
 
-  DEFAULT_GOOGLE_SHEETS_URL: 'https://script.google.com/macros/s/AKfycbwhCtBXO9Kw5hkAN6ecLtXGXrtJJRnBtXMqFP4nJQ2VdIRHNMsUJqniRNcsuMqnwT5A/exec',
+  DEFAULT_GOOGLE_SHEETS_URL: '',
   DEFAULT_SUPABASE_CONFIG: {
     url: 'https://aswankejifjsucrmvtxh.supabase.co',
     key: ''
@@ -1307,12 +1307,56 @@ const DB = {
 
   getGoogleSheetsUrl() {
     this.init();
-    return this.getStorage().getItem(this.KEYS.GOOGLE_SHEETS_URL) || this.DEFAULT_GOOGLE_SHEETS_URL;
+    const stored = this.getStorage().getItem(this.KEYS.GOOGLE_SHEETS_URL);
+    if (stored && stored.includes('AKfycbwhCtBXO9Kw5hkAN6ecLtXGXrtJJRnBtXMqFP4nJQ2VdIRHNMsUJqniRNcsuMqnwT5A')) {
+      // URL bawaan lama sudah mati (HTTP 404), bersihkan dari penyimpanan
+      return '';
+    }
+    return (stored || '').trim();
   },
 
   setGoogleSheetsUrl(url) {
     if (url && url.trim()) {
       this.getStorage().setItem(this.KEYS.GOOGLE_SHEETS_URL, url.trim());
+    }
+  },
+
+  async testGoogleSheetsConnection(customUrl = null) {
+    const url = (customUrl || this.getGoogleSheetsUrl() || '').trim();
+    if (!url) {
+      return { ok: false, error: 'NO_URL', message: 'URL Web App Google Apps Script belum dimasukkan.' };
+    }
+    if (!url.startsWith('https://script.google.com/macros/s/')) {
+      return { ok: false, error: 'INVALID_FORMAT', message: 'Format URL salah. URL wajib diawali dengan https://script.google.com/macros/s/.../exec' };
+    }
+
+    const probeUrl = url + (url.includes('?') ? '&' : '?') + 'action=ping&_=' + Date.now();
+
+    try {
+      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timeoutId = controller ? setTimeout(() => controller.abort(), 8000) : null;
+      
+      const res = await fetch(probeUrl, {
+        method: 'GET',
+        mode: 'cors',
+        signal: controller ? controller.signal : undefined
+      });
+      if (timeoutId) clearTimeout(timeoutId);
+
+      if (res.status === 404) {
+        return { ok: false, status: 404, error: 'NOT_FOUND', message: 'Web App tidak ditemukan (HTTP 404). Pastikan skrip sudah di-deploy sebagai Web App baru di Google Sheet Anda.' };
+      }
+      if (res.ok) {
+        return { ok: true, message: 'Terhubung' };
+      }
+      return { ok: false, status: res.status, error: 'HTTP_ERROR', message: `Server mengembalikan status HTTP ${res.status}` };
+    } catch(fetchErr) {
+      console.warn("Probe fetch note:", fetchErr);
+      return {
+        ok: false,
+        error: 'CONNECTION_FAILED',
+        message: 'Koneksi ke Web App gagal atau diblokir browser. Pastikan Web App di-deploy dengan hak akses "Siapa saja (Anyone)" dan URL berakhir dengan "/exec".'
+      };
     }
   },
 
@@ -1356,7 +1400,9 @@ const DB = {
 
   async syncAllToGoogleSheets(progressCallback, options = {}) {
     const webhookUrl = this.getGoogleSheetsUrl();
-    if (!webhookUrl) return { total: 0, success: 0 };
+    if (!webhookUrl || !webhookUrl.startsWith('https://script.google.com/macros/s/')) {
+      return { total: 0, success: 0, error: 'NO_URL' };
+    }
 
     const transactions = this.getTransactions();
     if (!transactions || transactions.length === 0) return { total: 0, success: 0 };
@@ -1470,10 +1516,10 @@ const DB = {
       });
       syncSuccess = true;
     } catch (err) {
-      console.warn('Batch fetch sync failed, trying fallback:', err);
+      console.warn('Batch fetch sync note:', err);
     }
 
-    if (!syncSuccess && typeof document !== 'undefined') {
+    if (typeof document !== 'undefined') {
       try {
         const iframeName = 'gsheet_batch_' + Date.now();
         const iframe = document.createElement('iframe');
@@ -1499,7 +1545,7 @@ const DB = {
         setTimeout(() => {
           try { document.body.removeChild(iframe); } catch(e) {}
           try { document.body.removeChild(form); } catch(e) {}
-        }, 3000);
+        }, 3500);
       } catch(formErr) {
         console.warn('Batch form submit fallback error:', formErr);
       }
@@ -1513,7 +1559,7 @@ const DB = {
       return { total: sortedTxs.length, success: sortedTxs.length };
     }
 
-    return { total: sortedTxs.length, success: 0 };
+    return { total: sortedTxs.length, success: 0, error: 'SEND_FAILED' };
   },
 
   notifyDataChanged(source = 'local') {

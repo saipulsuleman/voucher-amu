@@ -614,6 +614,9 @@
         </div>
         <textarea id="codegs-textarea" readonly style="width: 100%; height: 260px; font-family: monospace; font-size: 0.8rem; background: #0f172a; color: #38bdf8; padding: 0.75rem; border-radius: 6px; border: none; resize: vertical;">
 function doGet(e) {
+  if (e && e.parameter && e.parameter.action === 'ping') {
+    return responseJSON({ status: 'success', message: 'Google Apps Script Web App Connected' });
+  }
   return handleRequest(e);
 }
 
@@ -655,6 +658,10 @@ function handleRequest(e) {
       } else {
         throw parseErr;
       }
+    }
+
+    if (data && data.action === 'ping') {
+      return responseJSON({ status: 'success', message: 'Google Apps Script Web App Connected' });
     }
 
     var rows = Array.isArray(data) ? data : (data.rows || [data]);

@@ -624,6 +624,11 @@ const App = {
 
     // Google Sheets Sync Listeners
     document.getElementById('btn-sync-gsheet')?.addEventListener('click', async () => {
+      const gsheetUrl = DB.getGoogleSheetsUrl();
+      if (!gsheetUrl) {
+        alert("⚠️ URL Web App Google Sheets belum dikonfigurasi!\n\nSilakan buka tab 'Pengaturan Cloud & Database' dan masukkan URL Web App Google Apps Script dari Google Sheet Anda.");
+        return;
+      }
       const btn = document.getElementById('btn-sync-gsheet');
       const origText = btn.innerHTML;
       btn.disabled = true;
@@ -633,14 +638,16 @@ const App = {
       }, { force: true, resetCache: true });
       btn.disabled = false;
       btn.innerHTML = origText;
-      if (res.total === 0) {
+      if (res.error === 'NO_URL' || !gsheetUrl) {
+        alert("⚠️ URL Google Sheet belum dikonfigurasi. Silakan buka tab Pengaturan Cloud & Database.");
+      } else if (res.total === 0) {
         alert("⚠️ Tidak ada data transaksi di penyimpanan aplikasi ini (0 transaksi).\n\nJika data transaksi Anda tersimpan di Supabase Cloud, silakan klik 'Pull Data dari Supabase' terlebih dahulu, atau pastikan Anda membuka tab/domain yang menyimpan data transaksi.");
       } else if (res.success === res.total) {
         alert(`✅ Sinkronisasi Google Sheets Berhasil!\n\nSeluruh ${res.success} transaksi (termasuk semua rincian pecahan kupon) telah berhasil disinkronkan ke Google Sheet.`);
       } else if (res.success > 0) {
         alert(`⚠️ Sync Sebagian Berhasil!\n${res.success} dari ${res.total} transaksi berhasil.\n${res.total - res.success} transaksi gagal. Silakan coba lagi.`);
       } else {
-        alert(`❌ Sync Gagal!\nTidak ada transaksi yang berhasil (0 dari ${res.total}).\n\nPastikan Code.gs di Apps Script benar dan Web App di-deploy ulang.`);
+        alert(`❌ Sync Gagal!\nTidak ada transaksi yang berhasil (0 dari ${res.total}).\n\nPastikan:\n1. Skrip Code.gs di Apps Script sudah di-deploy dengan benar\n2. Akses diset ke 'Siapa saja' ('Anyone')\n3. URL yang dimasukkan adalah URL deployment terbaru.`);
       }
     });
 
@@ -648,6 +655,10 @@ const App = {
       const url = document.getElementById('input-gsheet-url')?.value.trim();
       if (!url) {
         alert("⚠️ Mohon masukkan URL Web App Google Apps Script dari Google Sheet Baru Anda!");
+        return;
+      }
+      if (!url.startsWith('https://script.google.com/macros/s/')) {
+        alert("⚠️ Format URL salah! URL harus diawali dengan https://script.google.com/macros/s/.../exec");
         return;
       }
       DB.setGoogleSheetsUrl(url);
@@ -666,54 +677,34 @@ const App = {
       btn.disabled = true;
       btn.innerHTML = '⏳ Mengetes Koneksi...';
       try {
-        // Use iframe form POST (same as sync) to test the connection
-        await new Promise((resolve, reject) => {
-          const iframeName = 'gsheet_test_' + Date.now();
-          const iframe = document.createElement('iframe');
-          iframe.name = iframeName;
-          iframe.style.display = 'none';
-          document.body.appendChild(iframe);
-          
-          const form = document.createElement('form');
-          form.method = 'POST';
-          form.action = url;
-          form.target = iframeName;
-          form.style.display = 'none';
-          
-          const input = document.createElement('input');
-          input.type = 'hidden';
-          input.name = 'payload';
-          input.value = JSON.stringify({ action: 'ping' });
-          form.appendChild(input);
-          document.body.appendChild(form);
-          
-          let done = false;
-          const finish = (success) => {
-            if (!done) {
-              done = true;
-              try { document.body.removeChild(iframe); } catch(e) {}
-              try { document.body.removeChild(form); } catch(e) {}
-              success ? resolve() : reject(new Error('Timeout'));
-            }
-          };
-          iframe.onload = () => finish(true);
-          setTimeout(() => finish(true), 6000); // Apps Script may take a few seconds
-          form.submit();
-        });
+        const probe = await DB.testGoogleSheetsConnection(url);
         btn.disabled = false;
         btn.innerHTML = origText;
-        alert("✅ Tes Koneksi Terhubung!\n\nURL Web App terhubung dan siap menerima data. Silakan klik '🚀 Sync Semua Data ke Google Sheet Baru'!");
+        if (probe.ok) {
+          alert("✅ Tes Koneksi Terhubung!\n\nURL Web App aktif dan siap menerima data. Silakan klik '🚀 Sync Semua Data ke Google Sheet Baru'!");
+        } else {
+          alert(`❌ Tes Koneksi Gagal!\n\n${probe.message || 'Tidak dapat menghubungi Web App.'}\n\nPastikan:\n1. Buka Google Sheet -> Ekstensi -> Apps Script\n2. Klik Terapkan (Deploy) -> Penerapan Baru (New Deployment)\n3. Jenis: Aplikasi Web (Web App)\n4. Akses (Who has access): 'Siapa saja' ('Anyone')\n5. Salin URL yang berakhiran '/exec'`);
+        }
       } catch(e) {
         btn.disabled = false;
         btn.innerHTML = origText;
-        alert("❌ Tes Koneksi Gagal!\n\nMohon pastikan URL diawali dengan https://script.google.com/macros/s/.../exec dan akses diset ke 'Siapa saja (Anyone)'.\n\nDetail: " + e.message);
+        alert("❌ Tes Koneksi Gagal!\n\nDetail: " + e.message);
       }
     });
 
     document.getElementById('btn-sync-all-gsheet')?.addEventListener('click', async () => {
       const inputUrl = document.getElementById('input-gsheet-url')?.value.trim();
       if (inputUrl) {
+        if (!inputUrl.startsWith('https://script.google.com/macros/s/')) {
+          alert("⚠️ Format URL salah! URL harus diawali dengan https://script.google.com/macros/s/.../exec");
+          return;
+        }
         DB.setGoogleSheetsUrl(inputUrl);
+      }
+      const activeUrl = DB.getGoogleSheetsUrl();
+      if (!activeUrl) {
+        alert("⚠️ URL Web App Google Sheets belum dikonfigurasi!\n\nSilakan masukkan URL Web App Google Apps Script terlebih dahulu, atau klik '📖 Skrip & Panduan Setup Google Sheet Baru' untuk melihat petunjuk.");
+        return;
       }
       const btn = document.getElementById('btn-sync-all-gsheet');
       const origText = btn.innerHTML;
@@ -724,7 +715,9 @@ const App = {
       }, { force: true, resetCache: true });
       btn.disabled = false;
       btn.innerHTML = origText;
-      if (res.total === 0) {
+      if (res.error === 'NO_URL') {
+        alert("⚠️ URL Google Sheet belum dikonfigurasi dengan benar.");
+      } else if (res.total === 0) {
         alert("⚠️ Tidak ada data transaksi di penyimpanan aplikasi ini (0 transaksi).\n\nJika data transaksi Anda tersimpan di Supabase Cloud, silakan klik 'Pull Data dari Supabase' terlebih dahulu, atau pastikan Anda membuka tab/domain yang menyimpan data transaksi.");
       } else if (res.success === res.total) {
         alert(`✅ Sync ke Google Sheet Baru Selesai!\n${res.success} dari ${res.total} transaksi berhasil terkirim ke Google Sheets.`);
@@ -2128,16 +2121,18 @@ const App = {
     this.loadCustomerOptions();
 
     const savedNotaNo = savedTx.notaNumber;
+    const hasGSheet = Boolean(DB.getGoogleSheetsUrl());
+    const gsheetHint = hasGSheet ? "" : " (⚠️ Google Sheets belum diset)";
     if (isEdit) {
       if (!skipReset) this.cancelEdit();
-      this._showSaveToast(`${savedNotaNo} (Di-update)`);
+      this._showSaveToast(`${savedNotaNo} (Di-update)${gsheetHint}`);
     } else {
       if (skipReset) {
         this.editingTxId = savedTx.id;
       } else {
         this.resetForm();
       }
-      this._showSaveToast(savedNotaNo);
+      this._showSaveToast(`${savedNotaNo}${gsheetHint}`);
     }
     this.renderHistoryTable();
     if (typeof Dashboard !== 'undefined') Dashboard.renderDashboard();
