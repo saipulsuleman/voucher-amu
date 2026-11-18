@@ -3,9 +3,9 @@
  * PT. Arba Mitra Usaha Gorontalo (SPBU 74-961-4)
  */
 
-if (typeof SerialCalc === 'undefined' && typeof require !== 'undefined') {
+if (typeof SerialCalc === 'undefined' && typeof require !== 'undefined' && typeof window === 'undefined') {
   try {
-    var SerialCalc = require('./serial-calc.js');
+    global.SerialCalc = require('./serial-calc.js');
   } catch (e) {}
 }
 
@@ -1650,6 +1650,10 @@ const DB = {
 };
 
 DB.init();
+
+if (typeof window !== 'undefined') {
+  window.DB = DB;
+}
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = DB;

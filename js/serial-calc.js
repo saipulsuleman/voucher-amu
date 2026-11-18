@@ -127,6 +127,10 @@ const SerialCalc = {
   }
 };
 
+if (typeof window !== 'undefined') {
+  window.SerialCalc = SerialCalc;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = SerialCalc;
 }
