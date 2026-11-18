@@ -95,29 +95,29 @@ const SerialCalc = {
     let maxEndNum = null;
     let originalLen = voucherCode === 'MANUAL' ? 3 : 6;
 
-    // 1. Check DB transactions for this denomination
+    // 1. Check active form rows first (in-form continuity takes precedence over saved DB)
+    if (Array.isArray(currentRows) && currentRows.length > 0) {
+      const matchingRows = currentRows.filter(r => r.voucherCode === voucherCode && (r.endSerial || r.end));
+      if (matchingRows.length > 0) {
+        const lastRow = matchingRows[matchingRows.length - 1];
+        const endVal = lastRow.endSerial || lastRow.end;
+        const parsed = this.parseSerial(endVal);
+        if (parsed !== null) {
+          if (endVal && String(endVal).length > 0) {
+            originalLen = String(endVal).length;
+          }
+          return this.formatSerial(parsed + 1, originalLen);
+        }
+      }
+    }
+
+    // 2. If no active form rows of this denomination, query the latest saved DB transaction
     if (typeof DB !== 'undefined' && typeof DB.getLastSerialByVoucherCode === 'function') {
       const dbRes = DB.getLastSerialByVoucherCode(voucherCode);
       if (dbRes && dbRes.maxEnd !== null) {
         maxEndNum = dbRes.maxEnd;
         if (dbRes.maxEndStr) {
           originalLen = dbRes.maxEndStr.length;
-        }
-      }
-    }
-
-    // 2. Check active form rows for higher end serial on the same denomination
-    if (Array.isArray(currentRows)) {
-      for (const row of currentRows) {
-        if (row.voucherCode === voucherCode) {
-          const endVal = row.endSerial || row.end;
-          const rowEndNum = this.parseSerial(endVal);
-          if (rowEndNum !== null && (maxEndNum === null || rowEndNum > maxEndNum)) {
-            maxEndNum = rowEndNum;
-            if (endVal && String(endVal).length > 0) {
-              originalLen = String(endVal).length;
-            }
-          }
         }
       }
     }

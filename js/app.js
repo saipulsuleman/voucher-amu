@@ -330,19 +330,29 @@ const App = {
       this.saveOnly();
     });
 
-    // Print Nota Button
+    // Print Nota SPJ (BBM) Button
     document.getElementById('btn-print-nota')?.addEventListener('click', () => {
       this.printDoc('nota');
     });
 
-    // Print Kwitansi Button
+    // Print Kwitansi SPJ (BBM) Button
     document.getElementById('btn-print-kwitansi')?.addEventListener('click', () => {
       this.printDoc('kwitansi');
     });
 
-    // Print Voucher Button
+    // Print Kwitansi Admin & Kliring Button
+    document.getElementById('btn-print-kwitansi-admin')?.addEventListener('click', () => {
+      this.printDoc('kwitansi-admin');
+    });
+
+    // Print Voucher Fisik Button
     document.getElementById('btn-print-voucher')?.addEventListener('click', () => {
       this.printDoc('voucher');
+    });
+
+    // Print Dokumen Gabungan Button
+    document.getElementById('btn-print-gabungan')?.addEventListener('click', () => {
+      this.printDoc('nota-gabungan');
     });
 
     // Toggle Preview Document Type
@@ -352,6 +362,14 @@ const App = {
 
     document.getElementById('btn-preview-kwitansi')?.addEventListener('click', () => {
       this.setPreviewDocType('kwitansi');
+    });
+
+    document.getElementById('btn-preview-kwitansi-admin')?.addEventListener('click', () => {
+      this.setPreviewDocType('kwitansi-admin');
+    });
+
+    document.getElementById('btn-preview-nota-gabungan')?.addEventListener('click', () => {
+      this.setPreviewDocType('nota-gabungan');
     });
 
     document.getElementById('btn-preview-voucher')?.addEventListener('click', () => {
@@ -1409,12 +1427,20 @@ const App = {
 
   setPreviewDocType(docType) {
     this.activeDocType = docType;
-    document.getElementById('btn-preview-nota')?.classList.toggle('btn-primary', docType === 'nota');
-    document.getElementById('btn-preview-nota')?.classList.toggle('btn-secondary', docType !== 'nota');
-    document.getElementById('btn-preview-kwitansi')?.classList.toggle('btn-primary', docType === 'kwitansi');
-    document.getElementById('btn-preview-kwitansi')?.classList.toggle('btn-secondary', docType !== 'kwitansi');
-    document.getElementById('btn-preview-voucher')?.classList.toggle('btn-primary', docType === 'voucher');
-    document.getElementById('btn-preview-voucher')?.classList.toggle('btn-secondary', docType !== 'voucher');
+    const btnIds = [
+      { id: 'btn-preview-nota', type: 'nota' },
+      { id: 'btn-preview-kwitansi', type: 'kwitansi' },
+      { id: 'btn-preview-kwitansi-admin', type: 'kwitansi-admin' },
+      { id: 'btn-preview-nota-gabungan', type: 'nota-gabungan' },
+      { id: 'btn-preview-voucher', type: 'voucher' }
+    ];
+    btnIds.forEach(({ id, type }) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.toggle('btn-primary', docType === type);
+        el.classList.toggle('btn-secondary', docType !== type);
+      }
+    });
     this.updateLivePreview();
   },
 
@@ -1643,14 +1669,54 @@ const App = {
     const grandTotalTerbilang = formatTerbilangRupiah(grandTotal, true);
     const expInfo = this.getExpiryInfo(dateStr, this.rows);
 
+    const payVoucher = document.getElementById('select-payment-voucher')?.value || 'Tunai';
+    const payAdmin = document.getElementById('select-payment-admin')?.value || 'Tunai';
+
+    const kwitansiParams = {
+      customer,
+      notaNo,
+      grandTotalTerbilang,
+      items: this.rows,
+      totalSheets,
+      voucherSubtotal,
+      voucherTerbilang,
+      adminFee: totalAdminFee,
+      clearingFee,
+      adminClearingSubtotal,
+      adminClearingTerbilang,
+      grandTotal,
+      formattedDate,
+      officer,
+      paymentVoucher: payVoucher,
+      paymentAdmin: payAdmin,
+      transactionDate: dateStr
+    };
+
     if (this.activeDocType === 'voucher') {
       container.innerHTML = this._buildVoucherStripsHtml(this.rows, customer, dateStr);
-    } else if (this.activeDocType === 'nota') {
-      const payV = document.getElementById('select-payment-voucher')?.value || 'Tunai';
-      const payA = document.getElementById('select-payment-admin')?.value || 'Tunai';
-      const ketText = (payV === payA) ? payV : `Voucher: ${payV}<br>Admin: ${payA}`;
-
-      // Build Nota Kupon 3-Up F4 Slip Html
+    } else if (this.activeDocType === 'kwitansi-admin') {
+      // 3-Up F4 Slips of Dedicated Admin & Clearing Receipt
+      const adminSlipHtml = this._buildKwitansiAdminSlipHtml(kwitansiParams);
+      container.innerHTML = `
+        <div class="print-document-container">
+          ${adminSlipHtml}
+          ${adminSlipHtml}
+          ${adminSlipHtml}
+        </div>
+      `;
+    } else if (this.activeDocType === 'kwitansi') {
+      // 3-Up F4 Slips of SPJ Fuel Voucher Receipt
+      const spjKwitansiSlipHtml = this._buildKwitansiSlipHtml({ ...kwitansiParams, isSpjOnly: true });
+      container.innerHTML = `
+        <div class="print-document-container">
+          ${spjKwitansiSlipHtml}
+          ${spjKwitansiSlipHtml}
+          ${spjKwitansiSlipHtml}
+        </div>
+      `;
+    } else if (this.activeDocType === 'nota-gabungan') {
+      // Combined All-in-One: 2 Combined Nota Slips + 1 Combined Kwitansi Slip
+      const ketText = (payVoucher === payAdmin) ? payVoucher : `Voucher: ${payVoucher}<br>Admin: ${payAdmin}`;
       let tableRowsHtml = '';
       const totalItemRows = this.rows.length;
       this.rows.forEach((r, idx) => {
@@ -1671,7 +1737,7 @@ const App = {
       });
 
       const compactClass = totalItemRows > 4 ? 'nota-compact' : '';
-      const singleNotaHtml = `
+      const singleCombinedNotaHtml = `
         <div class="nota-slip ${compactClass}">
           <img src="assets/logo-arba.png" class="watermark-bg" alt="ARBA GROUP Watermark">
           <div class="nota-content">
@@ -1761,139 +1827,134 @@ const App = {
           </div>
         </div>
       `;
-
-      const payVoucher = document.getElementById('select-payment-voucher')?.value || 'Tunai';
-      const payAdmin = document.getElementById('select-payment-admin')?.value || 'Tunai';
-
-      // Build Kwitansi 3rd Slip for F4 Combined Sheet
-      const kwitansiParams = {
-        customer,
-        grandTotalTerbilang,
-        items: this.rows,
-        totalSheets,
-        voucherSubtotal,
-        adminFee: totalAdminFee,
-        clearingFee,
-        adminClearingSubtotal,
-        grandTotal,
-        formattedDate,
-        officer,
-        paymentVoucher: payVoucher,
-        paymentAdmin: payAdmin,
-        transactionDate: dateStr
-      };
-      const singleKwitansiSlipHtml = this._buildKwitansiSlipHtml(kwitansiParams);
-
-      // Render 2 Nota Kupon Slips + 1 Kwitansi Slip Vertically for 3-Up F4 Print
+      const combinedKwitansiSlipHtml = this._buildKwitansiSlipHtml({ ...kwitansiParams, isSpjOnly: false });
       container.innerHTML = `
         <div class="print-document-container">
-          ${singleNotaHtml}
-          ${singleNotaHtml}
-          ${singleKwitansiSlipHtml}
+          ${singleCombinedNotaHtml}
+          ${singleCombinedNotaHtml}
+          ${combinedKwitansiSlipHtml}
         </div>
       `;
     } else {
-      const payVoucher = document.getElementById('select-payment-voucher')?.value || 'Tunai';
-      const payAdmin = document.getElementById('select-payment-admin')?.value || 'Tunai';
+      // Default: 'nota' => NOTA KUPON SPJ BBM MURNI (Rp 11.172.600)
+      const payV = payVoucher;
+      const ketText = payV;
 
-      // Build Kwitansi Document Preview with Separated Voucher & Admin Breakdown
-      let kwitansiBreakdownHtml = '';
-      this.rows.forEach(r => {
+      let tableRowsHtml = '';
+      const totalItemRows = this.rows.length;
+      this.rows.forEach((r, idx) => {
         const price = this.getVoucherPrice(r.voucherCode, r.customPrice);
-        const labelText = r.voucherCode === 'MANUAL' ? `• Voucher (Manual @${price.toLocaleString('id-ID')})` : `• Voucher ${price.toLocaleString('id-ID')}`;
-        kwitansiBreakdownHtml += `
-          <div class="kwitansi-breakdown-row">
-            <div style="width: 220px;">${labelText}</div>
-            <div style="width: 20px;">=</div>
-            <div style="width: 70px;">${r.quantity} Lbr</div>
-            <div style="width: 20px;">=</div>
-            <div>Rp ${r.itemSubtotal.toLocaleString('id-ID')},-</div>
-          </div>
+        const codeDisplay = r.voucherCode === 'MANUAL' ? `MANUAL (@${price.toLocaleString('id-ID')})` : r.voucherCode;
+        const ketTdHtml = (idx === 0) ? `<td rowspan="${totalItemRows}" style="font-size:9px; line-height:1.25; font-weight:600; text-align:center; vertical-align:middle;">${ketText}</td>` : '';
+        tableRowsHtml += `
+          <tr>
+            <td style="text-align:center;"><b>${codeDisplay}</b></td>
+            <td>${r.startSerial} - ${r.endSerial}</td>
+            <td style="text-align:center;">${r.quantity}</td>
+            <td style="text-align:center; color:#94a3b8;">-</td>
+            <td style="text-align:right;">${r.itemSubtotal.toLocaleString('id-ID')}</td>
+            ${ketTdHtml}
+          </tr>
         `;
       });
 
+      const compactClass = totalItemRows > 4 ? 'nota-compact' : '';
+      const singleSpjNotaHtml = `
+        <div class="nota-slip ${compactClass}">
+          <img src="assets/logo-arba.png" class="watermark-bg" alt="ARBA GROUP Watermark">
+          <div class="nota-content">
+            <table class="nota-header-table">
+              <tr>
+                <td width="75"><img src="assets/logo-arba.png" style="width: 68px; height: auto; display: block;" alt="Logo"></td>
+                <td class="nota-brand-title">
+                  <div class="nota-spbu-code">( SPBU 74 - 961 - 4 )</div>
+                  <div class="nota-company-name">PT. ARBA MITRA USAHA GORONTALO</div>
+                </td>
+                <td width="130" style="text-align:right;">
+                  <span style="font-size:11px; font-weight:bold;">NOTA KUPON &nbsp;No.</span>
+                  <div class="nota-no-box">${notaNo}</div>
+                </td>
+              </tr>
+            </table>
+
+            <div class="nota-diserahkan">
+              Diserahkan Kepada : <span class="nota-diserahkan-name">${customer}</span>
+            </div>
+
+            <table class="nota-main-table">
+              <thead>
+                <tr>
+                  <th width="70">Kode Kupon</th>
+                  <th width="140">Nomor</th>
+                  <th width="75">Banyaknya (Lembar)</th>
+                  <th width="90">Admin</th>
+                  <th width="110">Harga P/Ltr. (Rp)</th>
+                  <th>Keterangan</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${tableRowsHtml}
+                <tr class="nota-total-row">
+                  <td colspan="2" style="text-align:right;">Jumlah Subtotal</td>
+                  <td style="text-align:center;">${totalSheets} Lbr</td>
+                  <td style="text-align:center; color:#94a3b8;">-</td>
+                  <td style="text-align:right;">Rp. ${voucherSubtotal.toLocaleString('id-ID')}</td>
+                  <td></td>
+                </tr>
+                <tr style="font-weight:bold; background-color:#eff6ff;">
+                  <td colspan="3" style="text-align:right; color:#1e40af;">GRAND TOTAL NOTA BBM (SPJ)</td>
+                  <td colspan="2" style="text-align:right; font-size:13px; color:#1e40af;">Rp. ${voucherSubtotal.toLocaleString('id-ID')}</td>
+                  <td></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="nota-terbilang-box" style="background:#eff6ff; border-left:4px solid #3b82f6;">
+              TERBILANG : ${voucherTerbilang}
+            </div>
+
+            <div style="font-size: 8px; color: #475569; font-style: italic; margin-top: 3px; margin-bottom: 2px; text-align: left;">
+              ${expInfo.noteText}
+            </div>
+
+            <table class="nota-footer-table">
+              <tr>
+                <td width="33%">
+                  <div class="sig-block-left">
+                    <div class="sig-date"><b>Yang Menerima,</b></div>
+                    <div class="sig-company">&nbsp;</div>
+                    <div class="sig-space"></div>
+                    <div class="sig-name"><span class="sig-name-blank"></span></div>
+                  </div>
+                </td>
+                <td width="33%" style="text-align:center;">
+                  <div class="fiat-box">
+                    <div class="fiat-title">FIAT</div>
+                    <div class="fiat-cols">
+                      <div class="fiat-col">Adm</div>
+                      <div class="fiat-col">Plm.</div>
+                    </div>
+                  </div>
+                </td>
+                <td width="34%">
+                  <div class="sig-block-right">
+                    <div class="sig-date">${formattedDate}</div>
+                    <div class="sig-company">PT. ARBA MITRA USAHA</div>
+                    <div class="sig-space"></div>
+                    <div class="sig-name">( ${officer} )</div>
+                  </div>
+                </td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      `;
+      const spjKwitansiSlipHtml = this._buildKwitansiSlipHtml({ ...kwitansiParams, isSpjOnly: true });
       container.innerHTML = `
         <div class="print-document-container">
-          <div class="kwitansi-doc">
-            <img src="assets/logo-arba.png" class="watermark-bg" alt="ARBA GROUP Watermark" style="opacity: 0.12; width: 480px;">
-            <div class="kwitansi-header-title">KWITANSI</div>
-
-            <div class="kwitansi-row">
-              <div class="kwitansi-label">Sudah terima dari</div>
-              <div class="kwitansi-colon">:</div>
-              <div class="kwitansi-value">${customer}</div>
-            </div>
-
-            <div class="kwitansi-row">
-              <div class="kwitansi-label">Uang sejumlah</div>
-              <div class="kwitansi-colon">:</div>
-              <div class="kwitansi-value kwitansi-terbilang-text">${grandTotalTerbilang}</div>
-            </div>
-
-            <div class="kwitansi-row" style="margin-bottom:0;">
-              <div class="kwitansi-label">Untuk pembayaran</div>
-              <div class="kwitansi-colon">:</div>
-              <div class="kwitansi-value">
-                <div class="kwitansi-breakdown-table">
-                  <div style="font-weight: bold; color: #1e40af; border-bottom: 1px dashed #cbd5e1; padding-bottom: 2px; margin-bottom: 4px;">
-                    [1] PERHITUNGAN VOUCHER BBM (${payVoucher.toUpperCase()})
-                  </div>
-                  ${kwitansiBreakdownHtml}
-                  <div class="kwitansi-breakdown-row" style="font-weight: bold; margin-top: 4px; padding-top: 4px; border-top: 1px dashed #cbd5e1;">
-                    <div style="width: 220px;">Subtotal Voucher</div>
-                    <div style="width: 20px;">=</div>
-                    <div style="width: 70px;">${totalSheets} Lbr</div>
-                    <div style="width: 20px;">=</div>
-                    <div>Rp ${voucherSubtotal.toLocaleString('id-ID')},-</div>
-                  </div>
-
-                  <div style="font-weight: bold; color: #d97706; border-bottom: 1px dashed #cbd5e1; padding-bottom: 2px; margin-bottom: 4px; margin-top: 10px;">
-                    [2] PERHITUNGAN BIAYA ADMIN & CLEARING (${payAdmin.toUpperCase()})
-                  </div>
-                  <div class="kwitansi-breakdown-row">
-                    <div style="width: 220px;">• Biaya Cetak Admin</div>
-                    <div style="width: 20px;">=</div>
-                    <div style="width: 70px;">${totalSheets} Lbr @500</div>
-                    <div style="width: 20px;">=</div>
-                    <div>Rp ${totalAdminFee.toLocaleString('id-ID')},-</div>
-                  </div>
-                  ${clearingFee > 0 ? `
-                  <div class="kwitansi-breakdown-row">
-                    <div style="width: 220px;">• Biaya Clearing (Opsional)</div>
-                    <div style="width: 20px;">=</div>
-                    <div style="width: 70px;">-</div>
-                    <div style="width: 20px;">=</div>
-                    <div>Rp ${clearingFee.toLocaleString('id-ID')},-</div>
-                  </div>
-                  ` : ''}
-                  <div class="kwitansi-breakdown-row" style="font-weight: bold; margin-top: 4px; padding-top: 4px; border-top: 1px dashed #cbd5e1;">
-                    <div style="width: 220px;">Subtotal Admin & Clearing</div>
-                    <div style="width: 20px;">=</div>
-                    <div style="width: 70px;">-</div>
-                    <div style="width: 20px;">=</div>
-                    <div>Rp ${adminClearingSubtotal.toLocaleString('id-ID')},-</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="kwitansi-row" style="margin-top: 15px;">
-              <div class="kwitansi-label" style="font-size: 15px;">Nominal</div>
-              <div class="kwitansi-colon" style="font-size: 15px;">:</div>
-              <div class="kwitansi-value">
-                <span class="kwitansi-nominal-box">Rp. ${grandTotal.toLocaleString('id-ID')},-</span>
-              </div>
-            </div>
-
-            <div style="display: flex; justify-content: flex-end; margin-top: 30px;">
-              <div class="sig-block-right">
-                <div class="sig-date">${formattedDate}</div>
-                <div class="sig-company">PT. ARBA MITRA USAHA</div>
-                <div class="sig-space" style="height: 55px;"></div>
-                <div class="sig-name">( ${officer} )</div>
-              </div>
-            </div>
-          </div>
+          ${singleSpjNotaHtml}
+          ${singleSpjNotaHtml}
+          ${spjKwitansiSlipHtml}
         </div>
       `;
     }
@@ -1904,9 +1965,14 @@ const App = {
     }
   },
 
-  // ─── Helper: Build Kwitansi Slip HTML (for 1/3 F4 Bottom Section) ───────────
+  // ─── Helper: Build Kwitansi Slip HTML (for 1/3 F4 Bottom Section or SPJ BBM) ─
   _buildKwitansiSlipHtml(p) {
     const expInfo = this.getExpiryInfo(p.transactionDate || new Date(), p.items);
+    const isSpj = !!p.isSpjOnly;
+    const slipNominal = isSpj ? p.voucherSubtotal : p.grandTotal;
+    const slipTerbilang = isSpj ? (p.voucherTerbilang || formatTerbilangRupiah(p.voucherSubtotal, true)) : (p.grandTotalTerbilang || formatTerbilangRupiah(p.grandTotal, true));
+    const titleText = isSpj ? 'KWITANSI (SPJ BBM)' : 'KWITANSI';
+
     let kwitansiBreakdownHtml = '';
     (p.items || []).forEach(r => {
       const price = r.customPrice !== undefined ? r.customPrice : (r.itemSubtotal && r.quantity ? Math.round(r.itemSubtotal / r.quantity) : this.getVoucherPrice(r.voucherCode));
@@ -1922,11 +1988,40 @@ const App = {
       `;
     });
 
+    const adminSectionHtml = isSpj ? '' : `
+      <div style="font-weight: bold; color: #d97706; border-bottom: 1px dashed #cbd5e1; padding-bottom: 1px; margin-bottom: 2px; margin-top: 4px;">
+        [2] PERHITUNGAN BIAYA ADMIN & CLEARING (${(p.paymentAdmin || 'Tunai').toUpperCase()})
+      </div>
+      <div class="kwitansi-breakdown-row">
+        <div style="width: 200px;">• Biaya Cetak Admin</div>
+        <div style="width: 15px;">=</div>
+        <div style="width: 65px;">${p.totalSheets} Lbr @500</div>
+        <div style="width: 15px;">=</div>
+        <div>Rp ${p.adminFee.toLocaleString('id-ID')},-</div>
+      </div>
+      ${p.clearingFee > 0 ? `
+      <div class="kwitansi-breakdown-row">
+        <div style="width: 200px;">• Biaya Clearing (Opsional)</div>
+        <div style="width: 15px;">=</div>
+        <div style="width: 65px;">-</div>
+        <div style="width: 15px;">=</div>
+        <div>Rp ${p.clearingFee.toLocaleString('id-ID')},-</div>
+      </div>
+      ` : ''}
+      <div class="kwitansi-breakdown-row" style="font-weight: bold; margin-top: 2px; padding-top: 2px; border-top: 1px dashed #cbd5e1;">
+        <div style="width: 200px;">Subtotal Admin & Clearing</div>
+        <div style="width: 15px;">=</div>
+        <div style="width: 65px;">-</div>
+        <div style="width: 15px;">=</div>
+        <div>Rp ${p.adminClearingSubtotal.toLocaleString('id-ID')},-</div>
+      </div>
+    `;
+
     return `
       <div class="kwitansi-slip">
         <img src="assets/logo-arba.png" class="watermark-bg" alt="ARBA GROUP Watermark">
         <div class="kwitansi-slip-content">
-          <div class="kwitansi-slip-title">KWITANSI</div>
+          <div class="kwitansi-slip-title">${titleText}</div>
 
           <div class="kwitansi-row" style="margin-bottom: 3px;">
             <div class="kwitansi-label" style="width: 140px; font-size: 11px;">Sudah terima dari</div>
@@ -1937,7 +2032,7 @@ const App = {
           <div class="kwitansi-row" style="margin-bottom: 3px;">
             <div class="kwitansi-label" style="width: 140px; font-size: 11px;">Uang sejumlah</div>
             <div class="kwitansi-colon" style="width: 12px; font-size: 11px;">:</div>
-            <div class="kwitansi-value kwitansi-terbilang-text" style="font-size: 11px;">${p.grandTotalTerbilang}</div>
+            <div class="kwitansi-value kwitansi-terbilang-text" style="font-size: 11px;">${slipTerbilang}</div>
           </div>
 
           <div class="kwitansi-row" style="margin-bottom: 0;">
@@ -1946,43 +2041,19 @@ const App = {
             <div class="kwitansi-value">
               <div class="kwitansi-breakdown-table" style="font-size: 10.5px; margin-top: 0; margin-bottom: 4px;">
                 <div style="font-weight: bold; color: #1e40af; border-bottom: 1px dashed #cbd5e1; padding-bottom: 1px; margin-bottom: 2px;">
-                  [1] PERHITUNGAN VOUCHER BBM (${(p.paymentVoucher || 'Tunai').toUpperCase()})
+                  ${isSpj ? `RINCIAN PEMBELIAN KUPON BBM (${(p.paymentVoucher || 'Tunai').toUpperCase()})` : `[1] PERHITUNGAN VOUCHER BBM (${(p.paymentVoucher || 'Tunai').toUpperCase()})`}
                 </div>
                 ${kwitansiBreakdownHtml}
                 <div class="kwitansi-breakdown-row" style="font-weight: bold; margin-top: 2px; padding-top: 2px; border-top: 1px dashed #cbd5e1;">
-                  <div style="width: 200px;">Subtotal Voucher</div>
+                  <div style="width: 200px;">Subtotal Kupon BBM (SPJ)</div>
                   <div style="width: 15px;">=</div>
                   <div style="width: 65px;">${p.totalSheets} Lbr</div>
                   <div style="width: 15px;">=</div>
                   <div>Rp ${p.voucherSubtotal.toLocaleString('id-ID')},-</div>
                 </div>
 
-                <div style="font-weight: bold; color: #d97706; border-bottom: 1px dashed #cbd5e1; padding-bottom: 1px; margin-bottom: 2px; margin-top: 4px;">
-                  [2] PERHITUNGAN BIAYA ADMIN & CLEARING (${(p.paymentAdmin || 'Tunai').toUpperCase()})
-                </div>
-                <div class="kwitansi-breakdown-row">
-                  <div style="width: 200px;">• Biaya Cetak Admin</div>
-                  <div style="width: 15px;">=</div>
-                  <div style="width: 65px;">${p.totalSheets} Lbr @500</div>
-                  <div style="width: 15px;">=</div>
-                  <div>Rp ${p.adminFee.toLocaleString('id-ID')},-</div>
-                </div>
-                ${p.clearingFee > 0 ? `
-                <div class="kwitansi-breakdown-row">
-                  <div style="width: 200px;">• Biaya Clearing (Opsional)</div>
-                  <div style="width: 15px;">=</div>
-                  <div style="width: 65px;">-</div>
-                  <div style="width: 15px;">=</div>
-                  <div>Rp ${p.clearingFee.toLocaleString('id-ID')},-</div>
-                </div>
-                ` : ''}
-                <div class="kwitansi-breakdown-row" style="font-weight: bold; margin-top: 2px; padding-top: 2px; border-top: 1px dashed #cbd5e1;">
-                  <div style="width: 200px;">Subtotal Admin & Clearing</div>
-                  <div style="width: 15px;">=</div>
-                  <div style="width: 65px;">-</div>
-                  <div style="width: 15px;">=</div>
-                  <div>Rp ${p.adminClearingSubtotal.toLocaleString('id-ID')},-</div>
-                </div>
+                ${adminSectionHtml}
+
                 <div style="font-size: 8px; color: #475569; font-style: italic; margin-top: 3px; border-top: 1px dashed #cbd5e1; padding-top: 2px;">
                   ${expInfo.noteText}
                 </div>
@@ -1994,7 +2065,92 @@ const App = {
             <tr>
               <td width="50%" style="vertical-align: middle;">
                 <div style="font-size: 12px; font-weight: 900;">
-                  Nominal : <span style="font-size: 13px; color: #000;">Rp. ${p.grandTotal.toLocaleString('id-ID')},-</span>
+                  Nominal : <span style="font-size: 13px; color: #000;">Rp. ${slipNominal.toLocaleString('id-ID')},-</span>
+                </div>
+              </td>
+              <td width="50%">
+                <div class="sig-block-right">
+                  <div class="sig-date">${p.formattedDate}</div>
+                  <div class="sig-company">PT. ARBA MITRA USAHA</div>
+                  <div class="sig-space" style="height: 32px;"></div>
+                  <div class="sig-name">( ${p.officer} )</div>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    `;
+  },
+
+  // ─── Helper: Build Kwitansi Admin & Kliring Slip HTML (1/3 F4 Section) ─────
+  _buildKwitansiAdminSlipHtml(p) {
+    const adminClearingTerbilang = p.adminClearingTerbilang || formatTerbilangRupiah(p.adminClearingSubtotal, true);
+    const notaNoStr = p.notaNo || p.notaNumber || '';
+    return `
+      <div class="kwitansi-slip">
+        <img src="assets/logo-arba.png" class="watermark-bg" alt="ARBA GROUP Watermark">
+        <div class="kwitansi-slip-content">
+          <div class="kwitansi-slip-title" style="color: #b45309;">KWITANSI BIAYA CETAK & TRANSAKSI BANK</div>
+
+          <div class="kwitansi-row" style="margin-bottom: 3px;">
+            <div class="kwitansi-label" style="width: 140px; font-size: 11px;">No. Referensi Nota</div>
+            <div class="kwitansi-colon" style="width: 12px; font-size: 11px;">:</div>
+            <div class="kwitansi-value" style="font-size: 11px; font-weight: bold; color: #1e3a8a;">NOTA #${notaNoStr}</div>
+          </div>
+
+          <div class="kwitansi-row" style="margin-bottom: 3px;">
+            <div class="kwitansi-label" style="width: 140px; font-size: 11px;">Sudah terima dari</div>
+            <div class="kwitansi-colon" style="width: 12px; font-size: 11px;">:</div>
+            <div class="kwitansi-value" style="font-size: 11px; font-weight: bold;">${p.customer}</div>
+          </div>
+
+          <div class="kwitansi-row" style="margin-bottom: 3px;">
+            <div class="kwitansi-label" style="width: 140px; font-size: 11px;">Uang sejumlah</div>
+            <div class="kwitansi-colon" style="width: 12px; font-size: 11px;">:</div>
+            <div class="kwitansi-value kwitansi-terbilang-text" style="font-size: 11px; color: #b45309;">${adminClearingTerbilang}</div>
+          </div>
+
+          <div class="kwitansi-row" style="margin-bottom: 0;">
+            <div class="kwitansi-label" style="width: 140px; font-size: 11px;">Untuk pembayaran</div>
+            <div class="kwitansi-colon" style="width: 12px; font-size: 11px;">:</div>
+            <div class="kwitansi-value">
+              <div class="kwitansi-breakdown-table" style="font-size: 10.5px; margin-top: 0; margin-bottom: 4px;">
+                <div style="font-weight: bold; color: #d97706; border-bottom: 1px dashed #cbd5e1; padding-bottom: 1px; margin-bottom: 2px;">
+                  PERHITUNGAN BIAYA ADMIN CETAK & KLIRING BANK (${(p.paymentAdmin || 'Tunai').toUpperCase()})
+                </div>
+                <div class="kwitansi-breakdown-row">
+                  <div style="width: 200px;">• Biaya Jasa Cetak Kupon</div>
+                  <div style="width: 15px;">=</div>
+                  <div style="width: 65px;">${p.totalSheets} Lbr @500</div>
+                  <div style="width: 15px;">=</div>
+                  <div>Rp ${(p.adminFee || 0).toLocaleString('id-ID')},-</div>
+                </div>
+                ${p.clearingFee > 0 ? `
+                <div class="kwitansi-breakdown-row">
+                  <div style="width: 200px;">• Biaya Kliring Transaksi Bank</div>
+                  <div style="width: 15px;">=</div>
+                  <div style="width: 65px;">Auto-Deduct</div>
+                  <div style="width: 15px;">=</div>
+                  <div>Rp ${(p.clearingFee || 0).toLocaleString('id-ID')},-</div>
+                </div>
+                ` : ''}
+                <div class="kwitansi-breakdown-row" style="font-weight: bold; margin-top: 2px; padding-top: 2px; border-top: 1px dashed #cbd5e1;">
+                  <div style="width: 200px;">Subtotal Admin & Kliring</div>
+                  <div style="width: 15px;">=</div>
+                  <div style="width: 65px;">-</div>
+                  <div style="width: 15px;">=</div>
+                  <div style="color: #b45309; font-weight: bold;">Rp ${p.adminClearingSubtotal.toLocaleString('id-ID')},-</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <table class="nota-footer-table" style="margin-top: 2px;">
+            <tr>
+              <td width="50%" style="vertical-align: middle;">
+                <div style="font-size: 12px; font-weight: 900;">
+                  Nominal : <span style="font-size: 13px; color: #b45309;">Rp. ${p.adminClearingSubtotal.toLocaleString('id-ID')},-</span>
                 </div>
               </td>
               <td width="50%">
@@ -2262,9 +2418,11 @@ const App = {
     if (!tx) return;
 
     const formattedDate = this.formatGorontaloDate(tx.transactionDate);
-    const adminClearingSubtotal = tx.adminClearingSubtotal !== undefined ? tx.adminClearingSubtotal : ((tx.adminFee || 0) + (tx.clearingFee || 0));
     const voucherSubtotal = tx.voucherSubtotal || 0;
-    const grandTotal = tx.grandTotal || 0;
+    const totalAdminFee = tx.adminFee || 0;
+    const clearingFee = Number(tx.clearingFee) || 0;
+    const adminClearingSubtotal = tx.adminClearingSubtotal !== undefined ? tx.adminClearingSubtotal : (totalAdminFee + clearingFee);
+    const grandTotal = tx.grandTotal || (voucherSubtotal + adminClearingSubtotal);
 
     const voucherTerbilang = tx.voucherTerbilang || formatTerbilangRupiah(voucherSubtotal, true);
     const adminClearingTerbilang = tx.adminClearingTerbilang || formatTerbilangRupiah(adminClearingSubtotal, true);
@@ -2274,17 +2432,59 @@ const App = {
     const txPayV = tx.paymentVoucher || tx.payment_voucher || 'Tunai';
     const txPayA = tx.paymentAdmin || tx.payment_admin || 'Tunai';
 
+    const kwitansiParams = {
+      customer: window.escapeHTML(tx.customerName),
+      notaNo: tx.notaNumber,
+      notaNumber: tx.notaNumber,
+      grandTotalTerbilang,
+      items: tx.items || [],
+      totalSheets: tx.totalSheets || 0,
+      voucherSubtotal,
+      voucherTerbilang,
+      adminFee: totalAdminFee,
+      clearingFee,
+      adminClearingSubtotal,
+      adminClearingTerbilang,
+      grandTotal,
+      formattedDate,
+      officer: window.escapeHTML(tx.officerName || 'Saipul Karim Suleman'),
+      paymentVoucher: txPayV,
+      paymentAdmin: txPayA,
+      transactionDate: tx.transactionDate
+    };
+
     let html = '';
     if (docType === 'voucher') {
       html = this._buildVoucherStripsHtml(tx.items || [], tx.customerName, tx.transactionDate);
-    } else if (docType === 'nota') {
+    } else if (docType === 'kwitansi-admin') {
+      // 3-Up F4 Slips of Dedicated Admin & Clearing Receipt
+      const adminSlip = this._buildKwitansiAdminSlipHtml(kwitansiParams);
+      html = `
+        <div class="print-document-container">
+          ${adminSlip}
+          ${adminSlip}
+          ${adminSlip}
+        </div>
+      `;
+    } else if (docType === 'kwitansi') {
+      // 3-Up F4 Slips of SPJ Fuel Voucher Receipt (Murni BBM)
+      const spjSlip = this._buildKwitansiSlipHtml({ ...kwitansiParams, isSpjOnly: true });
+      html = `
+        <div class="print-document-container">
+          ${spjSlip}
+          ${spjSlip}
+          ${spjSlip}
+        </div>
+      `;
+    } else if (docType === 'nota-gabungan') {
+      // Combined All-in-One: 2 Combined Nota Slips + 1 Combined Kwitansi Slip
       const ketText = (txPayV === txPayA) ? txPayV : `Voucher: ${txPayV}<br>Admin: ${txPayA}`;
       let tableRowsHtml = '';
       const itemsList = tx.items || [];
       const totalItemRows = itemsList.length;
       itemsList.forEach((r, idx) => {
         const price = r.customPrice !== undefined ? r.customPrice : (r.itemSubtotal && r.quantity ? Math.round(r.itemSubtotal / r.quantity) : this.getVoucherPrice(r.voucherCode));
-        const adminText = (tx.clearingFee || 0) > 0 ? `${(r.adminSubtotal || 0).toLocaleString('id-ID')} + ${(tx.clearingFee || 0).toLocaleString('id-ID')}` : `${(r.adminSubtotal || 0).toLocaleString('id-ID')}`;
+        const adminText = clearingFee > 0 ? `${(r.adminSubtotal || 0).toLocaleString('id-ID')} + ${clearingFee.toLocaleString('id-ID')}` : `${(r.adminSubtotal || 0).toLocaleString('id-ID')}`;
         const codeDisplay = r.voucherCode === 'MANUAL' ? `MANUAL (@${price.toLocaleString('id-ID')})` : r.voucherCode;
         const ketTdHtml = (idx === 0) ? `<td rowspan="${totalItemRows}" style="font-size:9px; line-height:1.25; font-weight:600; text-align:center; vertical-align:middle;">${ketText}</td>` : '';
         tableRowsHtml += `
@@ -2300,7 +2500,7 @@ const App = {
       });
 
       const compactClass = totalItemRows > 4 ? 'nota-compact' : '';
-      const singleNotaHtml = `
+      const singleCombinedNotaHtml = `
         <div class="nota-slip ${compactClass}">
           <img src="assets/logo-arba.png" class="watermark-bg" alt="ARBA GROUP Watermark">
           <div class="nota-content">
@@ -2390,133 +2590,133 @@ const App = {
           </div>
         </div>
       `;
-
-      const kwitansiParams = {
-        customer: window.escapeHTML(tx.customerName),
-        grandTotalTerbilang,
-        items: tx.items || [],
-        totalSheets: tx.totalSheets || 0,
-        voucherSubtotal,
-        adminFee: tx.adminFee || 0,
-        clearingFee: tx.clearingFee || 0,
-        adminClearingSubtotal,
-        grandTotal,
-        formattedDate,
-        officer: window.escapeHTML(tx.officerName) || 'Saipul Karim Suleman',
-        paymentVoucher: txPayV,
-        paymentAdmin: txPayA,
-        transactionDate: tx.transactionDate
-      };
-      const singleKwitansiSlipHtml = this._buildKwitansiSlipHtml(kwitansiParams);
-
+      const combinedKwitansiSlipHtml = this._buildKwitansiSlipHtml({ ...kwitansiParams, isSpjOnly: false });
       html = `
         <div class="print-document-container">
-          ${singleNotaHtml}
-          ${singleNotaHtml}
-          ${singleKwitansiSlipHtml}
+          ${singleCombinedNotaHtml}
+          ${singleCombinedNotaHtml}
+          ${combinedKwitansiSlipHtml}
         </div>
       `;
     } else {
-      let kwitansiBreakdownHtml = '';
-      (tx.items || []).forEach(r => {
+      // Default: 'nota' => NOTA KUPON SPJ BBM MURNI (Rp 11.172.600)
+      const ketText = txPayV;
+      let tableRowsHtml = '';
+      const itemsList = tx.items || [];
+      const totalItemRows = itemsList.length;
+      itemsList.forEach((r, idx) => {
         const price = r.customPrice !== undefined ? r.customPrice : (r.itemSubtotal && r.quantity ? Math.round(r.itemSubtotal / r.quantity) : this.getVoucherPrice(r.voucherCode));
-        const labelText = r.voucherCode === 'MANUAL' ? `• Voucher (Manual @${price.toLocaleString('id-ID')})` : `• Voucher ${price.toLocaleString('id-ID')}`;
-        kwitansiBreakdownHtml += `
-          <div class="kwitansi-breakdown-row">
-            <div style="width: 220px;">${labelText}</div>
-            <div style="width: 20px;">=</div>
-            <div style="width: 70px;">${r.quantity} Lbr</div>
-            <div style="width: 20px;">=</div>
-            <div>Rp ${(r.itemSubtotal || 0).toLocaleString('id-ID')},-</div>
-          </div>
+        const codeDisplay = r.voucherCode === 'MANUAL' ? `MANUAL (@${price.toLocaleString('id-ID')})` : r.voucherCode;
+        const ketTdHtml = (idx === 0) ? `<td rowspan="${totalItemRows}" style="font-size:9px; line-height:1.25; font-weight:600; text-align:center; vertical-align:middle;">${ketText}</td>` : '';
+        tableRowsHtml += `
+          <tr>
+            <td style="text-align:center;"><b>${codeDisplay}</b></td>
+            <td>${r.startSerial} - ${r.endSerial}</td>
+            <td style="text-align:center;">${r.quantity}</td>
+            <td style="text-align:center; color:#94a3b8;">-</td>
+            <td style="text-align:right;">${(r.itemSubtotal || 0).toLocaleString('id-ID')}</td>
+            ${ketTdHtml}
+          </tr>
         `;
       });
 
+      const compactClass = totalItemRows > 4 ? 'nota-compact' : '';
+      const singleSpjNotaHtml = `
+        <div class="nota-slip ${compactClass}">
+          <img src="assets/logo-arba.png" class="watermark-bg" alt="ARBA GROUP Watermark">
+          <div class="nota-content">
+            <table class="nota-header-table">
+              <tr>
+                <td width="75"><img src="assets/logo-arba.png" style="width: 68px; height: auto; display: block;" alt="Logo"></td>
+                <td class="nota-brand-title">
+                  <div class="nota-spbu-code">( SPBU 74 - 961 - 4 )</div>
+                  <div class="nota-company-name">PT. ARBA MITRA USAHA GORONTALO</div>
+                </td>
+                <td width="130" style="text-align:right;">
+                  <span style="font-size:11px; font-weight:bold;">NOTA KUPON &nbsp;No.</span>
+                  <div class="nota-no-box">${tx.notaNumber}</div>
+                </td>
+              </tr>
+            </table>
+
+            <div class="nota-diserahkan">
+              Diserahkan Kepada : <span class="nota-diserahkan-name">${window.escapeHTML(tx.customerName)}</span>
+            </div>
+
+            <table class="nota-main-table">
+              <thead>
+                <tr>
+                  <th width="70">Kode Kupon</th>
+                  <th width="140">Nomor</th>
+                  <th width="75">Banyaknya (Lembar)</th>
+                  <th width="90">Admin</th>
+                  <th width="110">Harga P/Ltr. (Rp)</th>
+                  <th>Keterangan</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${tableRowsHtml}
+                <tr class="nota-total-row">
+                  <td colspan="2" style="text-align:right;">Jumlah Subtotal</td>
+                  <td style="text-align:center;">${tx.totalSheets} Lbr</td>
+                  <td style="text-align:center; color:#94a3b8;">-</td>
+                  <td style="text-align:right;">Rp. ${voucherSubtotal.toLocaleString('id-ID')}</td>
+                  <td></td>
+                </tr>
+                <tr style="font-weight:bold; background-color:#eff6ff;">
+                  <td colspan="3" style="text-align:right; color:#1e40af;">GRAND TOTAL NOTA BBM (SPJ)</td>
+                  <td colspan="2" style="text-align:right; font-size:13px; color:#1e40af;">Rp. ${voucherSubtotal.toLocaleString('id-ID')}</td>
+                  <td></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="nota-terbilang-box" style="background:#eff6ff; border-left:4px solid #3b82f6;">
+              TERBILANG : ${voucherTerbilang}
+            </div>
+
+            <div style="font-size: 8px; color: #475569; font-style: italic; margin-top: 3px; margin-bottom: 2px; text-align: left;">
+              ${expInfo.noteText}
+            </div>
+
+            <table class="nota-footer-table">
+              <tr>
+                <td width="33%">
+                  <div class="sig-block-left">
+                    <div class="sig-date"><b>Yang Menerima,</b></div>
+                    <div class="sig-company">&nbsp;</div>
+                    <div class="sig-space"></div>
+                    <div class="sig-name"><span class="sig-name-blank"></span></div>
+                  </div>
+                </td>
+                <td width="33%" style="text-align:center;">
+                  <div class="fiat-box">
+                    <div class="fiat-title">FIAT</div>
+                    <div class="fiat-cols">
+                      <div class="fiat-col">Adm</div>
+                      <div class="fiat-col">Plm.</div>
+                    </div>
+                  </div>
+                </td>
+                <td width="34%">
+                  <div class="sig-block-right">
+                    <div class="sig-date">${formattedDate}</div>
+                    <div class="sig-company">PT. ARBA MITRA USAHA</div>
+                    <div class="sig-space"></div>
+                    <div class="sig-name">( ${window.escapeHTML(tx.officerName || 'Saipul Karim Suleman')} )</div>
+                  </div>
+                </td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      `;
+      const spjKwitansiSlipHtml = this._buildKwitansiSlipHtml({ ...kwitansiParams, isSpjOnly: true });
       html = `
         <div class="print-document-container">
-          <div class="kwitansi-doc">
-            <img src="assets/logo-arba.png" class="watermark-bg" alt="ARBA GROUP Watermark" style="opacity: 0.12; width: 480px;">
-            <div class="kwitansi-header-title">KWITANSI</div>
-
-            <div class="kwitansi-row">
-              <div class="kwitansi-label">Sudah terima dari</div>
-              <div class="kwitansi-colon">:</div>
-              <div class="kwitansi-value">${window.escapeHTML(tx.customerName)}</div>
-            </div>
-
-            <div class="kwitansi-row">
-              <div class="kwitansi-label">Uang sejumlah</div>
-              <div class="kwitansi-colon">:</div>
-              <div class="kwitansi-value kwitansi-terbilang-text">${grandTotalTerbilang}</div>
-            </div>
-
-            <div class="kwitansi-row" style="margin-bottom:0;">
-              <div class="kwitansi-label">Untuk pembayaran</div>
-              <div class="kwitansi-colon">:</div>
-              <div class="kwitansi-value">
-                <div class="kwitansi-breakdown-table">
-                  <div style="font-weight: bold; color: #1e40af; border-bottom: 1px dashed #cbd5e1; padding-bottom: 2px; margin-bottom: 4px;">
-                    [1] PERHITUNGAN VOUCHER BBM (${txPayV.toUpperCase()})
-                  </div>
-                  ${kwitansiBreakdownHtml}
-                  <div class="kwitansi-breakdown-row" style="font-weight: bold; margin-top: 4px; padding-top: 4px; border-top: 1px dashed #cbd5e1;">
-                    <div style="width: 220px;">Subtotal Voucher</div>
-                    <div style="width: 20px;">=</div>
-                    <div style="width: 70px;">${tx.totalSheets} Lbr</div>
-                    <div style="width: 20px;">=</div>
-                    <div>Rp ${voucherSubtotal.toLocaleString('id-ID')},-</div>
-                  </div>
-
-                  <div style="font-weight: bold; color: #d97706; border-bottom: 1px dashed #cbd5e1; padding-bottom: 2px; margin-bottom: 4px; margin-top: 10px;">
-                    [2] PERHITUNGAN BIAYA ADMIN & CLEARING (${txPayA.toUpperCase()})
-                  </div>
-                  <div class="kwitansi-breakdown-row">
-                    <div style="width: 220px;">• Biaya Cetak Admin</div>
-                    <div style="width: 20px;">=</div>
-                    <div style="width: 70px;">${tx.totalSheets} Lbr @500</div>
-                    <div style="width: 20px;">=</div>
-                    <div>Rp ${(tx.adminFee || 0).toLocaleString('id-ID')},-</div>
-                  </div>
-                  ${(tx.clearingFee || 0) > 0 ? `
-                  <div class="kwitansi-breakdown-row">
-                    <div style="width: 220px;">• Biaya Clearing (Opsional)</div>
-                    <div style="width: 20px;">=</div>
-                    <div style="width: 70px;">-</div>
-                    <div style="width: 20px;">=</div>
-                    <div>Rp ${(tx.clearingFee || 0).toLocaleString('id-ID')},-</div>
-                  </div>
-                  ` : ''}
-                  <div class="kwitansi-breakdown-row" style="font-weight: bold; margin-top: 4px; padding-top: 4px; border-top: 1px dashed #cbd5e1;">
-                    <div style="width: 220px;">Subtotal Admin & Clearing</div>
-                    <div style="width: 20px;">=</div>
-                    <div style="width: 70px;">-</div>
-                    <div style="width: 20px;">=</div>
-                    <div>Rp ${adminClearingSubtotal.toLocaleString('id-ID')},-</div>
-                  </div>
-                  <div style="font-size: 8.5px; color: #475569; font-style: italic; margin-top: 5px; border-top: 1px dashed #cbd5e1; padding-top: 4px;">
-                    ${expInfo.noteText}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="kwitansi-row" style="margin-top: 15px;">
-              <div class="kwitansi-label" style="font-size: 15px;">Nominal</div>
-              <div class="kwitansi-colon" style="font-size: 15px;">:</div>
-              <div class="kwitansi-value">
-                <span class="kwitansi-nominal-box">Rp. ${(tx.grandTotal || 0).toLocaleString('id-ID')},-</span>
-              </div>
-            </div>
-
-            <div style="display: flex; justify-content: flex-end; margin-top: 30px;">
-              <div class="sig-block-right">
-                <div class="sig-date">${formattedDate}</div>
-                <div class="sig-company">PT. ARBA MITRA USAHA</div>
-                <div class="sig-space" style="height: 55px;"></div>
-                <div class="sig-name">( ${window.escapeHTML(tx.officerName || 'Saipul Karim Suleman')} )</div>
-              </div>
-            </div>
-          </div>
+          ${singleSpjNotaHtml}
+          ${singleSpjNotaHtml}
+          ${spjKwitansiSlipHtml}
         </div>
       `;
     }
@@ -2665,7 +2865,7 @@ const App = {
     const normalized = DB.normalizeTxPaymentMethods(tx);
     const payV = normalized.paymentVoucher;
     const payA = normalized.paymentAdmin;
-    const totalClearing = tx.clearingFee || 0;
+    const totalClearing = Number(tx.clearingFee) || 0;
 
     let totalVoucherSub = 0;
     let totalAdminSub = 0;
@@ -2680,18 +2880,13 @@ const App = {
       const voucherSub = item.itemSubtotal || 0;
       const adminSub = item.adminSubtotal || (qty * 500);
 
-      // Distribute clearing fee to 1st item row (or display as dedicated bank deduction)
-      const itemClearing = (index === 0) ? totalClearing : 0;
-      const itemGrand = voucherSub + adminSub + itemClearing;
+      // Clean item calculation without pollution from transaction-level clearing fee
+      const itemGrand = voucherSub + adminSub;
 
       totalSheets += qty;
       totalVoucherSub += voucherSub;
       totalAdminSub += adminSub;
       totalGrand += itemGrand;
-
-      const clearingBadge = itemClearing > 0
-        ? `<span class="badge-clearing">Rp ${itemClearing.toLocaleString('id-ID')}</span>`
-        : `<span style="color:#94a3b8;">Rp 0</span>`;
 
       return `
         <tr>
@@ -2703,11 +2898,13 @@ const App = {
           <td><span style="font-size:0.78rem; font-weight:600; color:#0284c7;">💳 ${payV}</span></td>
           <td style="font-weight:600; color:#d97706; text-align:right;">Rp ${adminSub.toLocaleString('id-ID')}</td>
           <td><span style="font-size:0.78rem; font-weight:600; color:#92400e;">💳 ${payA}</span></td>
-          <td style="text-align:right;">${clearingBadge}</td>
-          <td style="font-weight:800; color:var(--primary-red); text-align:right;">Rp ${itemGrand.toLocaleString('id-ID')}</td>
+          <td style="font-weight:800; color:#1e293b; text-align:right;">Rp ${itemGrand.toLocaleString('id-ID')}</td>
         </tr>
       `;
     }).join('');
+
+    const adminClearingSubtotal = totalAdminSub + totalClearing;
+    const grandTotalNota = totalVoucherSub + adminClearingSubtotal;
 
     return `
       <div style="overflow-x: auto;">
@@ -2722,7 +2919,6 @@ const App = {
               <th>Metode Pay Voucher</th>
               <th style="text-align:right;">Admin Cetak (@500)</th>
               <th>Metode Pay Admin</th>
-              <th style="text-align:right;">Clearing Bank (Auto-Deduct)</th>
               <th style="text-align:right;">Grand Total Item</th>
             </tr>
           </thead>
@@ -2731,17 +2927,35 @@ const App = {
           </tbody>
           <tfoot>
             <tr class="sub-table-footer">
-              <td colspan="3"><strong>TOTAL NOTA #${tx.notaNumber} (${tx.items.length} Pecahan)</strong></td>
+              <td colspan="3"><strong>TOTAL PECAHAN KUPON (${tx.items.length} Pecahan)</strong></td>
               <td style="text-align:center;"><strong>${totalSheets} Lbr</strong></td>
               <td style="text-align:right; color:#1e40af;"><strong>Rp ${totalVoucherSub.toLocaleString('id-ID')}</strong></td>
               <td>-</td>
               <td style="text-align:right; color:#d97706;"><strong>Rp ${totalAdminSub.toLocaleString('id-ID')}</strong></td>
               <td>-</td>
-              <td style="text-align:right; color:#92400e;"><strong>Rp ${totalClearing.toLocaleString('id-ID')}</strong></td>
-              <td style="text-align:right; color:var(--primary-red); font-size:0.9rem;"><strong>Rp ${totalGrand.toLocaleString('id-ID')}</strong></td>
+              <td style="text-align:right; color:#1e293b; font-size:0.9rem;"><strong>Rp ${totalGrand.toLocaleString('id-ID')}</strong></td>
             </tr>
           </tfoot>
         </table>
+
+        <!-- Dual-Document & Financial Reconciliation Panel -->
+        <div style="margin-top: 0.75rem; padding: 0.75rem 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem; font-size: 0.82rem;">
+          <div style="padding: 0.5rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 4px;">
+            <div style="font-weight: 700; color: #1e40af; margin-bottom: 2px;">📄 [1] Dokumen SPJ BBM (Voucher)</div>
+            <div style="font-size: 1.05rem; font-weight: 800; color: #1d4ed8;">Rp ${totalVoucherSub.toLocaleString('id-ID')}</div>
+            <div style="color: #64748b; font-size: 0.75rem; margin-top: 2px;">Metode: <b>${payV}</b> (Murni Belanja BBM)</div>
+          </div>
+          <div style="padding: 0.5rem; background: #fffbeb; border: 1px solid #fde68a; border-radius: 4px;">
+            <div style="font-weight: 700; color: #b45309; margin-bottom: 2px;">📑 [2] Dokumen Admin & Kliring</div>
+            <div style="font-size: 1.05rem; font-weight: 800; color: #d97706;">Rp ${adminClearingSubtotal.toLocaleString('id-ID')}</div>
+            <div style="color: #64748b; font-size: 0.75rem; margin-top: 2px;">Cetak: Rp ${totalAdminSub.toLocaleString('id-ID')} (${payA}) + Kliring: Rp ${totalClearing.toLocaleString('id-ID')}</div>
+          </div>
+          <div style="padding: 0.5rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 4px;">
+            <div style="font-weight: 700; color: #b91c1c; margin-bottom: 2px;">💰 Total Ditanggung Dinas</div>
+            <div style="font-size: 1.05rem; font-weight: 800; color: #dc2626;">Rp ${grandTotalNota.toLocaleString('id-ID')}</div>
+            <div style="color: #64748b; font-size: 0.75rem; margin-top: 2px;">Grand Total Seluruh Tagihan Nota #${tx.notaNumber}</div>
+          </div>
+        </div>
       </div>
     `;
   },
@@ -2813,9 +3027,11 @@ const App = {
           <td>${statusBadge}</td>
           <td>
             <div style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
-              <button class="btn btn-sm btn-print-hist" style="background:#fff; border:1px solid #cbd5e1; padding:0.25rem 0.5rem; border-radius:4px;" data-id="${tx.id}" data-type="nota">🖨️ Nota</button>
-              <button class="btn btn-sm btn-print-hist" style="background:#fff; border:1px solid #cbd5e1; padding:0.25rem 0.5rem; border-radius:4px;" data-id="${tx.id}" data-type="kwitansi">🖨️ Kwt</button>
-              <button class="btn btn-sm btn-print-hist" style="background:#fff; border:1px solid #059669; color:#059669; padding:0.25rem 0.5rem; border-radius:4px; font-weight:bold;" data-id="${tx.id}" data-type="voucher">🖨️ Voucher</button>
+              <button class="btn btn-sm btn-print-hist" style="background:#fff; border:1px solid #dc2626; color:#dc2626; padding:0.2rem 0.45rem; border-radius:4px; font-weight:700; font-size:0.75rem;" data-id="${tx.id}" data-type="nota" title="Cetak Nota Kupon SPJ BBM Murni">📄 Nota SPJ</button>
+              <button class="btn btn-sm btn-print-hist" style="background:#fff; border:1px solid #0284c7; color:#0284c7; padding:0.2rem 0.45rem; border-radius:4px; font-weight:700; font-size:0.75rem;" data-id="${tx.id}" data-type="kwitansi" title="Cetak Kwitansi SPJ BBM Murni">🧾 Kwt SPJ</button>
+              <button class="btn btn-sm btn-print-hist" style="background:#fff; border:1px solid #d97706; color:#b45309; padding:0.2rem 0.45rem; border-radius:4px; font-weight:700; font-size:0.75rem;" data-id="${tx.id}" data-type="kwitansi-admin" title="Cetak Kwitansi Khusus Biaya Cetak Admin & Kliring Bank">📑 Kwt Admin</button>
+              <button class="btn btn-sm btn-print-hist" style="background:#fff; border:1px solid #64748b; color:#475569; padding:0.2rem 0.45rem; border-radius:4px; font-size:0.75rem;" data-id="${tx.id}" data-type="nota-gabungan" title="Cetak Dokumen Gabungan All-in-One">📋 Gabungan</button>
+              <button class="btn btn-sm btn-print-hist" style="background:#fff; border:1px solid #059669; color:#059669; padding:0.2rem 0.45rem; border-radius:4px; font-weight:bold; font-size:0.75rem;" data-id="${tx.id}" data-type="voucher" title="Cetak Voucher Fisik Kupon">🎟️ Voucher</button>
               ${!isVoid ? `
                 <button class="btn btn-warning btn-sm btn-edit-tx" style="padding:0.25rem 0.5rem; background:#f59e0b; color:#fff; border:none; border-radius:4px; font-weight:bold;" data-id="${tx.id}">✏️ Edit</button>
                 <button class="btn btn-danger btn-sm btn-void-tx" style="padding:0.25rem 0.5rem; background:#ef4444; color:#fff; border:none; border-radius:4px; font-weight:bold;" data-id="${tx.id}">🚫 VOID</button>

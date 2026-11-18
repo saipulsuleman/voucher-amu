@@ -134,7 +134,7 @@ const ExcelExport = {
           const itemAdmin = Number(item.adminSubtotal) || (Number(item.quantity) * 500);
           const itemClearing = (idx === 0) ? (Number(tx.clearingFee) || 0) : 0;
           const itemSubtotal = Number(item.itemSubtotal) || 0;
-          const itemTotal = itemSubtotal + itemAdmin + itemClearing;
+          const itemTotal = itemSubtotal + itemAdmin; // Clean row calculation without transaction-level clearing pollution
 
           const expInfo = (typeof DB !== 'undefined' && DB.calculateExpiryDate) ? DB.calculateExpiryDate(tx.transactionDate, item.voucherCode) : { dateFormatted: '-', status: 'AKTIF' };
 
@@ -165,29 +165,47 @@ const ExcelExport = {
       }
     });
 
+    // Helper menentukan kelompok cetakan/batch untuk memastikan kontinuitas nomor urut seri
+    const getBatchGroup = (row) => {
+      const code = String(row.voucherCode || row.voucher_code || row.voucherLabel || '').toUpperCase();
+      const startNum = parseInt(String(row.startSerial || row.start_serial || '').replace(/\D/g, ''), 10) || 0;
+      const endNum = parseInt(String(row.endSerial || row.end_serial || '').replace(/\D/g, ''), 10) || 0;
+      const maxSerial = Math.max(startNum, endNum);
+
+      // V25: Batch 0 (seri lama 99000-100000), Batch 1 (seri baru < 99000)
+      if (code === 'V25' || code.includes('25')) {
+        return (maxSerial >= 99000 && maxSerial <= 100000) ? 0 : 1;
+      }
+      // V50: Batch 0 (seri lama mendekati 150000: >= 140000 & <= 150000), Batch 1 (seri baru < 140000)
+      if (code === 'V50' || code.includes('50')) {
+        return (maxSerial >= 140000 && maxSerial <= 150000) ? 0 : 1;
+      }
+      return 0;
+    };
+
     // Sort comparator for REKAPITULASI TOTAL: 1st by Nota Number (asc), 2nd by Start Serial (khusus)
     const sortRowsByNota = (a, b) => {
       const notaA = parseInt(a.notaNumber || a.nota_number, 10) || 0;
       const notaB = parseInt(b.notaNumber || b.nota_number, 10) || 0;
       if (notaA !== notaB) return notaA - notaB;
 
+      const groupA = getBatchGroup(a);
+      const groupB = getBatchGroup(b);
+      if (groupA !== groupB) return groupA - groupB;
+
       const serialA = parseInt(String(a.startSerial || a.start_serial || '').replace(/\D/g, ''), 10) || 0;
       const serialB = parseInt(String(b.startSerial || b.start_serial || '').replace(/\D/g, ''), 10) || 0;
-      
-      const groupA = (serialA >= 99000 && serialA <= 100000) ? 0 : 1;
-      const groupB = (serialB >= 99000 && serialB <= 100000) ? 0 : 1;
-      if (groupA !== groupB) return groupA - groupB;
       return serialA - serialB;
     };
 
-    // Sort comparator for Denomination Sheets: 1st by Start Serial (continuous sequential order guarantee), 2nd by Nota
+    // Sort comparator for Denomination Sheets: 1st by Batch Group, 2nd by Start Serial (continuous sequential order guarantee), 3rd by Nota
     const sortRowsBySerial = (a, b) => {
+      const groupA = getBatchGroup(a);
+      const groupB = getBatchGroup(b);
+      if (groupA !== groupB) return groupA - groupB;
+
       const serialA = parseInt(String(a.startSerial || a.start_serial || '').replace(/\D/g, ''), 10) || 0;
       const serialB = parseInt(String(b.startSerial || b.start_serial || '').replace(/\D/g, ''), 10) || 0;
-      
-      const groupA = (serialA >= 99000 && serialA <= 100000) ? 0 : 1;
-      const groupB = (serialB >= 99000 && serialB <= 100000) ? 0 : 1;
-      if (groupA !== groupB) return groupA - groupB;
       if (serialA !== serialB) return serialA - serialB;
 
       const notaA = parseInt(a.notaNumber || a.nota_number, 10) || 0;
@@ -944,9 +962,14 @@ const ExcelExport = {
       if (!startNum || !endNum) return;
       
       // Tentukan kelompok cetakan (batch):
-      // Batch 0: Cetakan lama mendekati 100.000 (>= 99000 dan <= 100000)
-      // Batch 1: Cetakan baru hasil reset/pencetakan ulang (< 99000)
-      const batchGroup = (startNum >= 99000 || endNum >= 99000) ? 0 : 1;
+      // Batch 0: Cetakan lama mendekati rollover (V25 >= 99000, V50 >= 140000)
+      // Batch 1: Cetakan baru hasil reset/pencetakan ulang
+      let batchGroup = 0;
+      if (code.includes('25')) {
+        batchGroup = (startNum >= 99000 || endNum >= 99000) ? 0 : 1;
+      } else if (code.includes('50')) {
+        batchGroup = (startNum >= 140000 || endNum >= 140000) ? 0 : 1;
+      }
       
       if (!serialsPerCodeAndBatch[code]) serialsPerCodeAndBatch[code] = {};
       if (!serialsPerCodeAndBatch[code][batchGroup]) serialsPerCodeAndBatch[code][batchGroup] = [];
@@ -1015,7 +1038,7 @@ const ExcelExport = {
         const subtotalVal = Number(r.subtotalNominal) || 0;
         const adminVal = Number(r.adminFee) || 0;
         const clearingVal = Number(r.clearingFee) || 0;
-        const totalVal = Number(r.totalAmount) || (subtotalVal + adminVal + clearingVal);
+        const totalVal = Number(r.totalAmount) || (subtotalVal + adminVal);
 
         tSheets += sheetsVal;
         tSubtotal += subtotalVal;

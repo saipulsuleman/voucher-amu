@@ -3,6 +3,12 @@
  * PT. Arba Mitra Usaha Gorontalo (SPBU 74-961-4)
  */
 
+if (typeof SerialCalc === 'undefined' && typeof require !== 'undefined') {
+  try {
+    var SerialCalc = require('./serial-calc.js');
+  } catch (e) {}
+}
+
 const DB = {
   KEYS: {
     TRANSACTIONS: 'amu_voucher_transactions',
@@ -416,18 +422,36 @@ const DB = {
     let maxEnd = null;
     let maxEndStr = '';
 
-    // Check ALL transactions to find the absolute highest serial number.
-    // This is mathematically robust against out-of-order receipt entry.
-    for (const tx of transactions) {
-      if (tx.status === 'VOID') continue;
-      
-      // EXPLICITLY ignore the dummy seed data so it doesn't artificially inflate the max
-      if (tx.id === 'TX-SEED-36') continue;
-      
+    // Filter valid, non-void transactions
+    const validTxs = (transactions || []).filter(tx => {
+      if (!tx || tx.status === 'VOID') return false;
+      if (tx.id === 'TX-SEED-36') return false;
+      return true;
+    });
+
+    // Urutkan transaksi secara kronologis descending (nota tertinggi dahulu, lalu tanggal transaksi/createdAt)
+    // agar selalu mengambil nomor seri operasional aktif terakhir (bukan Math.max naif global)
+    validTxs.sort((a, b) => {
+      const notaA = parseInt(a.notaNumber, 10) || 0;
+      const notaB = parseInt(b.notaNumber, 10) || 0;
+      if (notaA !== notaB) return notaB - notaA; // Descending
+
+      const dateA = new Date(a.transactionDate || a.createdAt || 0).getTime() || 0;
+      const dateB = new Date(b.transactionDate || b.createdAt || 0).getTime() || 0;
+      return dateB - dateA;
+    });
+
+    // Cari transaksi aktif terbaru yang memuat pecahan voucher ini
+    for (const tx of validTxs) {
       if (tx.items && Array.isArray(tx.items)) {
-        for (const item of tx.items) {
-          if (this.isDummyTestItem(item)) continue;
-          if (!voucherCode || item.voucherCode === voucherCode) {
+        const matchingItems = tx.items.filter(item => {
+          if (this.isDummyTestItem(item)) return false;
+          return !voucherCode || item.voucherCode === voucherCode;
+        });
+
+        if (matchingItems.length > 0) {
+          // Ambil endSerial tertinggi di dalam transaksi terbaru ini
+          for (const item of matchingItems) {
             const eNum = SerialCalc.parseSerial(item.endSerial);
             if (eNum !== null) {
               if (maxEnd === null || eNum > maxEnd) {
@@ -435,6 +459,9 @@ const DB = {
                 maxEndStr = item.endSerial;
               }
             }
+          }
+          if (maxEnd !== null) {
+            break; // Berhenti karena sudah menemukan transaksi terakhir penerbit pecahan ini
           }
         }
       }
@@ -1434,7 +1461,7 @@ const DB = {
           const itemAdmin = Number(item.adminSubtotal) || (Number(item.quantity) * 500);
           const itemClearing = (idx === 0) ? (Number(tx.clearingFee) || 0) : 0;
           const itemSubtotal = Number(item.itemSubtotal) || 0;
-          const itemTotal = itemSubtotal + itemAdmin + itemClearing;
+          const itemTotal = itemSubtotal + itemAdmin; // Clean row calculation without transaction-level clearing pollution
           const expInfo = this.calculateExpiryDate(tx.transactionDate || tx.date || tx.createdAt, item.voucherCode);
 
           allPayloadRows.push({
