@@ -870,7 +870,7 @@ function populateTransactionSheet(ss, sheetName, rows, titleSuffix, subtitleSuff
       var subtotalVal = Number(r.subtotal_nominal) || 0;
       var adminVal = Number(r.admin_fee) || 0;
       var clearingVal = Number(r.clearing_fee) || 0;
-      var totalVal = Number(r.total_amount) || (subtotalVal + adminVal);
+      var totalVal = Number(r.total_amount) || (subtotalVal + adminVal + clearingVal);
 
       totalSheets += sheetsVal;
       totalSubtotal += subtotalVal;
@@ -1021,10 +1021,13 @@ function populateCashFlow(ss, rows) {
     }
 
     if (pAdmin.indexOf('tunai') !== -1 || pAdmin.indexOf('cash') !== -1) {
-      totalCash += (admin + clearing);
+      totalCash += admin;
     } else {
-      totalBank += (admin + clearing);
+      totalBank += admin;
     }
+
+    // Biaya clearing dipotong via perbankan (transfer)
+    totalBank += clearing;
   });
 
   var totalAll = totalCash + totalBank;
@@ -1140,10 +1143,10 @@ function populateGeneralJournal(ss, rows) {
   <script src="js/terbilang.js"></script>
   <script src="js/serial-calc.js"></script>
   <!-- Application Scripts -->
-  <script src="js/database.js?v=5"></script>
-  <script src="js/excel-export.js?v=5"></script>
-  <script src="js/dashboard.js?v=5"></script>
-  <script src="js/app.js?v=5"></script>
+  <script src="js/database.js?v=6"></script>
+  <script src="js/excel-export.js?v=6"></script>
+  <script src="js/dashboard.js?v=6"></script>
+  <script src="js/app.js?v=6"></script>
 
 </body>
 </html>

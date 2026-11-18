@@ -1461,7 +1461,7 @@ const DB = {
           const itemAdmin = Number(item.adminSubtotal) || (Number(item.quantity) * 500);
           const itemClearing = (idx === 0) ? (Number(tx.clearingFee) || 0) : 0;
           const itemSubtotal = Number(item.itemSubtotal) || 0;
-          const itemTotal = itemSubtotal + itemAdmin; // Clean row calculation without transaction-level clearing pollution
+          const itemTotal = itemSubtotal + itemAdmin + itemClearing; // Full balanced row amount for spreadsheet reconciliation
           const expInfo = this.calculateExpiryDate(tx.transactionDate || tx.date || tx.createdAt, item.voucherCode);
 
           allPayloadRows.push({
