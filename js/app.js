@@ -330,9 +330,14 @@ const App = {
       this.saveOnly();
     });
 
-    // Print Nota SPJ (BBM) Button
+    // Print Nota SPJ + Kwitansi Admin Button
     document.getElementById('btn-print-nota')?.addEventListener('click', () => {
       this.printDoc('nota');
+    });
+
+    // Print Nota SPJ (Murni BBM) Button
+    document.getElementById('btn-print-nota-spj')?.addEventListener('click', () => {
+      this.printDoc('nota-spj');
     });
 
     // Print Kwitansi SPJ (BBM) Button
@@ -358,6 +363,10 @@ const App = {
     // Toggle Preview Document Type
     document.getElementById('btn-preview-nota')?.addEventListener('click', () => {
       this.setPreviewDocType('nota');
+    });
+
+    document.getElementById('btn-preview-nota-spj')?.addEventListener('click', () => {
+      this.setPreviewDocType('nota-spj');
     });
 
     document.getElementById('btn-preview-kwitansi')?.addEventListener('click', () => {
@@ -1429,6 +1438,7 @@ const App = {
     this.activeDocType = docType;
     const btnIds = [
       { id: 'btn-preview-nota', type: 'nota' },
+      { id: 'btn-preview-nota-spj', type: 'nota-spj' },
       { id: 'btn-preview-kwitansi', type: 'kwitansi' },
       { id: 'btn-preview-kwitansi-admin', type: 'kwitansi-admin' },
       { id: 'btn-preview-nota-gabungan', type: 'nota-gabungan' },
@@ -1950,11 +1960,18 @@ const App = {
         </div>
       `;
       const spjKwitansiSlipHtml = this._buildKwitansiSlipHtml({ ...kwitansiParams, isSpjOnly: true });
+      const adminSlipHtml = this._buildKwitansiAdminSlipHtml(kwitansiParams);
+      // Pilihan default 'nota': Atas & Tengah = 2x Nota SPJ (BBM), Bawah = Kwitansi Biaya Admin & Kliring (Permintaan User: Gambar 1 & 2)
+      // Pilihan 'nota-spj': Bawah = Kwitansi SPJ BBM Murni
+      const bottomSlipHtml = (this.activeDocType === 'nota-spj')
+        ? spjKwitansiSlipHtml
+        : (adminClearingSubtotal > 0 ? adminSlipHtml : spjKwitansiSlipHtml);
+
       container.innerHTML = `
         <div class="print-document-container">
           ${singleSpjNotaHtml}
           ${singleSpjNotaHtml}
-          ${spjKwitansiSlipHtml}
+          ${bottomSlipHtml}
         </div>
       `;
     }
@@ -2712,11 +2729,18 @@ const App = {
         </div>
       `;
       const spjKwitansiSlipHtml = this._buildKwitansiSlipHtml({ ...kwitansiParams, isSpjOnly: true });
+      const adminSlipHtml = this._buildKwitansiAdminSlipHtml(kwitansiParams);
+      // Pilihan default 'nota': Atas & Tengah = 2x Nota SPJ (BBM), Bawah = Kwitansi Biaya Admin & Kliring (Permintaan User: Gambar 1 & 2)
+      // Pilihan 'nota-spj': Bawah = Kwitansi SPJ BBM Murni
+      const bottomSlipHtml = (docType === 'nota-spj')
+        ? spjKwitansiSlipHtml
+        : (adminClearingSubtotal > 0 ? adminSlipHtml : spjKwitansiSlipHtml);
+
       html = `
         <div class="print-document-container">
           ${singleSpjNotaHtml}
           ${singleSpjNotaHtml}
-          ${spjKwitansiSlipHtml}
+          ${bottomSlipHtml}
         </div>
       `;
     }
@@ -3027,9 +3051,10 @@ const App = {
           <td>${statusBadge}</td>
           <td>
             <div style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
-              <button class="btn btn-sm btn-print-hist" style="background:#fff; border:1px solid #dc2626; color:#dc2626; padding:0.2rem 0.45rem; border-radius:4px; font-weight:700; font-size:0.75rem;" data-id="${tx.id}" data-type="nota" title="Cetak Nota Kupon SPJ BBM Murni">📄 Nota SPJ</button>
-              <button class="btn btn-sm btn-print-hist" style="background:#fff; border:1px solid #0284c7; color:#0284c7; padding:0.2rem 0.45rem; border-radius:4px; font-weight:700; font-size:0.75rem;" data-id="${tx.id}" data-type="kwitansi" title="Cetak Kwitansi SPJ BBM Murni">🧾 Kwt SPJ</button>
-              <button class="btn btn-sm btn-print-hist" style="background:#fff; border:1px solid #d97706; color:#b45309; padding:0.2rem 0.45rem; border-radius:4px; font-weight:700; font-size:0.75rem;" data-id="${tx.id}" data-type="kwitansi-admin" title="Cetak Kwitansi Khusus Biaya Cetak Admin & Kliring Bank">📑 Kwt Admin</button>
+              <button class="btn btn-sm btn-print-hist" style="background:#fff; border:1px solid #dc2626; color:#dc2626; padding:0.2rem 0.45rem; border-radius:4px; font-weight:700; font-size:0.75rem;" data-id="${tx.id}" data-type="nota" title="Cetak 2 Nota SPJ (BBM) + 1 Kwitansi Biaya Admin & Kliring (1 Lembar F4)">📄 Nota+Admin</button>
+              <button class="btn btn-sm btn-print-hist" style="background:#fff; border:1px solid #2563eb; color:#2563eb; padding:0.2rem 0.45rem; border-radius:4px; font-weight:600; font-size:0.75rem;" data-id="${tx.id}" data-type="nota-spj" title="Cetak 2 Nota SPJ (BBM) + 1 Kwitansi SPJ BBM Murni (1 Lembar F4)">📄 Nota SPJ</button>
+              <button class="btn btn-sm btn-print-hist" style="background:#fff; border:1px solid #0284c7; color:#0284c7; padding:0.2rem 0.45rem; border-radius:4px; font-weight:700; font-size:0.75rem;" data-id="${tx.id}" data-type="kwitansi" title="Cetak Kwitansi SPJ BBM Murni (3-Up)">🧾 Kwt SPJ</button>
+              <button class="btn btn-sm btn-print-hist" style="background:#fff; border:1px solid #d97706; color:#b45309; padding:0.2rem 0.45rem; border-radius:4px; font-weight:700; font-size:0.75rem;" data-id="${tx.id}" data-type="kwitansi-admin" title="Cetak Kwitansi Khusus Biaya Cetak Admin & Kliring Bank (3-Up)">📑 Kwt Admin</button>
               <button class="btn btn-sm btn-print-hist" style="background:#fff; border:1px solid #64748b; color:#475569; padding:0.2rem 0.45rem; border-radius:4px; font-size:0.75rem;" data-id="${tx.id}" data-type="nota-gabungan" title="Cetak Dokumen Gabungan All-in-One">📋 Gabungan</button>
               <button class="btn btn-sm btn-print-hist" style="background:#fff; border:1px solid #059669; color:#059669; padding:0.2rem 0.45rem; border-radius:4px; font-weight:bold; font-size:0.75rem;" data-id="${tx.id}" data-type="voucher" title="Cetak Voucher Fisik Kupon">🎟️ Voucher</button>
               ${!isVoid ? `

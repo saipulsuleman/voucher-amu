@@ -242,22 +242,25 @@
 
               <!-- Print Buttons: Dual-Document Layout -->
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
-                <button id="btn-print-nota" class="btn btn-print-action-red" title="Cetak Nota Kupon SPJ BBM Murni">
-                  📄 Cetak Nota SPJ (BBM)
+                <button id="btn-print-nota" class="btn btn-print-action-red" title="Cetak 2 Nota SPJ (BBM) + 1 Kwitansi Biaya Admin & Kliring (1 Lembar F4)">
+                  📄 Cetak Nota SPJ + Kwitansi Admin
                 </button>
-                <button id="btn-print-kwitansi" class="btn btn-print-action-slate" title="Cetak Kwitansi SPJ BBM Murni">
-                  🧾 Cetak Kwitansi SPJ (BBM)
+                <button id="btn-print-nota-spj" class="btn" style="background: linear-gradient(135deg, #1e40af, #2563eb); color: white; border: none; padding: 0.75rem 0.5rem; font-weight: 700; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.4rem;" title="Cetak 2 Nota SPJ (BBM) + 1 Kwitansi SPJ BBM Murni (1 Lembar F4)">
+                  📄 Cetak Nota SPJ (Murni BBM)
                 </button>
-                <button id="btn-print-kwitansi-admin" class="btn" style="background: linear-gradient(135deg, #d97706, #b45309); color: white; border: none; padding: 0.75rem 0.5rem; font-weight: 700; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.4rem;" title="Cetak Kwitansi Khusus Biaya Cetak Admin & Kliring Bank">
-                  📑 Cetak Kwitansi Admin & Kliring
+                <button id="btn-print-kwitansi" class="btn btn-print-action-slate" title="Cetak 3 Rangkap Kwitansi SPJ BBM Murni">
+                  🧾 Cetak Kwitansi SPJ (3-Up)
                 </button>
-                <button id="btn-print-voucher" class="btn btn-print-action-emerald" style="background: linear-gradient(135deg, #059669, #10b981); color: white; border: none; padding: 0.75rem 0.5rem; font-weight: 700; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.4rem; transition: transform 0.2s, box-shadow 0.2s;">
-                  🎟️ Cetak Voucher Fisik
+                <button id="btn-print-kwitansi-admin" class="btn" style="background: linear-gradient(135deg, #d97706, #b45309); color: white; border: none; padding: 0.75rem 0.5rem; font-weight: 700; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.4rem;" title="Cetak 3 Rangkap Kwitansi Khusus Biaya Cetak Admin & Kliring Bank">
+                  📑 Cetak Kwitansi Admin (3-Up)
+                </button>
+                <button id="btn-print-voucher" class="btn btn-print-action-emerald" style="background: linear-gradient(135deg, #059669, #10b981); color: white; border: none; padding: 0.75rem 0.5rem; font-weight: 700; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.4rem; transition: transform 0.2s, box-shadow 0.2s; grid-column: span 2;">
+                  🎟️ Cetak Voucher Fisik (Kupon)
                 </button>
               </div>
 
               <!-- Cetak Dokumen Gabungan (Opsional) -->
-              <button id="btn-print-gabungan" class="btn" style="background: #f8fafc; color: #475569; border: 1px dashed #cbd5e1; font-size: 0.82rem; padding: 0.45rem; font-weight: 600; width: 100%; border-radius: 6px; cursor: pointer;" title="Cetak Dokumen Gabungan All-in-One (Voucher + Admin + Kliring)">
+              <button id="btn-print-gabungan" class="btn" style="background: #f8fafc; color: #475569; border: 1px dashed #cbd5e1; font-size: 0.82rem; padding: 0.45rem; font-weight: 600; width: 100%; border-radius: 6px; cursor: pointer; margin-top: 0.5rem;" title="Cetak Dokumen Gabungan All-in-One (Voucher + Admin + Kliring)">
                 📋 Cetak Dokumen Gabungan (All-in-One)
               </button>
 
@@ -279,9 +282,10 @@
         <div class="card-title">
           <span>👁️ Preview Tampilan Cetak Dokumen</span>
           <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
-            <button id="btn-preview-nota" class="btn btn-primary btn-sm" title="Nota Kupon SPJ BBM Murni">📄 Nota SPJ (BBM)</button>
-            <button id="btn-preview-kwitansi" class="btn btn-secondary btn-sm" title="Kwitansi SPJ BBM Murni">🧾 Kwitansi SPJ (BBM)</button>
-            <button id="btn-preview-kwitansi-admin" class="btn btn-secondary btn-sm" title="Kwitansi Biaya Cetak Admin & Kliring Bank">📑 Kwitansi Admin & Kliring</button>
+            <button id="btn-preview-nota" class="btn btn-primary btn-sm" title="Nota SPJ (BBM) + Kwitansi Biaya Admin & Kliring (1 Lembar F4)">📄 Nota SPJ + Kwitansi Admin</button>
+            <button id="btn-preview-nota-spj" class="btn btn-secondary btn-sm" title="Nota & Kwitansi SPJ BBM Murni">📄 Nota & Kwitansi SPJ (Murni)</button>
+            <button id="btn-preview-kwitansi" class="btn btn-secondary btn-sm" title="Kwitansi SPJ BBM Murni (3-Up)">🧾 Kwitansi SPJ (3-Up)</button>
+            <button id="btn-preview-kwitansi-admin" class="btn btn-secondary btn-sm" title="Kwitansi Biaya Cetak Admin & Kliring Bank (3-Up)">📑 Kwitansi Admin (3-Up)</button>
             <button id="btn-preview-nota-gabungan" class="btn btn-secondary btn-sm" title="Dokumen Gabungan All-in-One">📋 Dokumen Gabungan</button>
             <button id="btn-preview-voucher" class="btn btn-secondary btn-sm" title="Voucher Fisik Barcode">🎟️ Voucher Fisik</button>
           </div>
@@ -1136,10 +1140,10 @@ function populateGeneralJournal(ss, rows) {
   <script src="js/terbilang.js"></script>
   <script src="js/serial-calc.js"></script>
   <!-- Application Scripts -->
-  <script src="js/database.js?v=4"></script>
-  <script src="js/excel-export.js?v=4"></script>
-  <script src="js/dashboard.js?v=4"></script>
-  <script src="js/app.js?v=4"></script>
+  <script src="js/database.js?v=5"></script>
+  <script src="js/excel-export.js?v=5"></script>
+  <script src="js/dashboard.js?v=5"></script>
+  <script src="js/app.js?v=5"></script>
 
 </body>
 </html>
